@@ -1,0 +1,2 @@
+#!/bin/sh
+case "$1" in -u) echo 2000;; *) echo "uid=2000(shell) gid=2000(shell)";; esac

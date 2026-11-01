@@ -1,0 +1,2 @@
+#!/bin/sh
+if echo "$*" | grep -q "PID,USER,RSS,NAME"; then printf '   PID USER         RSS NAME\n  1234 system     182340 system_server\n  2345 u0_a123     90210 com.example.notes\n  3456 root         4100 adbd\n'; else printf 'USER PID NAME\nroot 1 init\n'; fi

@@ -1,0 +1,8 @@
+#!/usr/bin/env python3
+import sys, json, os, time, subprocess
+a=sys.argv[1:]; name=a[a.index("-avd")+1]
+S=os.environ["FAKE"]+"/state.json"
+st=json.load(open(S)) if os.path.exists(S) else {}
+n=5554+2*len(st); st[f"emulator-{n}"]={"avd":name,"boot_at":time.time()+3,"pid":os.getpid()}
+json.dump(st,open(S,"w"))
+time.sleep(3600)

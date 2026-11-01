@@ -1,0 +1,24 @@
+{
+ "pack": "qualcomm",
+ "title": "Qualcomm",
+ "requires": {
+  "soc": [
+   "qualcomm"
+  ]
+ },
+ "tweaks": [],
+ "debloat": [
+  {
+   "pkg": "com.qualcomm.qti.qms.service.telemetry",
+   "label": "Qualcomm telemetry",
+   "risk": "safe",
+   "why": "Telemetry service."
+  },
+  {
+   "pkg": "com.qualcomm.qti.qms.service.connectionsecurity",
+   "label": "Qualcomm connection security",
+   "risk": "caution",
+   "why": "Security telemetry; harmless to disable on most devices."
+  }
+ ]
+}

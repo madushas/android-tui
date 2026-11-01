@@ -1,0 +1,54 @@
+{
+ "pack": "google",
+ "title": "Google Pixel / AOSP-Google",
+ "requires": {
+  "brand": [
+   "google"
+  ]
+ },
+ "tweaks": [],
+ "debloat": [
+  {
+   "pkg": "com.google.android.apps.tips",
+   "label": "Pixel Tips",
+   "risk": "safe",
+   "why": "Tips app; user-facing, not needed."
+  },
+  {
+   "pkg": "com.google.android.apps.subscriptions.red",
+   "label": "Google One",
+   "risk": "safe",
+   "why": "Storage upsell app."
+  },
+  {
+   "pkg": "com.google.android.apps.tachyon",
+   "label": "Google Meet",
+   "risk": "safe",
+   "why": "Video calling; reinstallable."
+  },
+  {
+   "pkg": "com.google.android.apps.youtube.music",
+   "label": "YouTube Music",
+   "risk": "safe",
+   "why": "Optional media app."
+  },
+  {
+   "pkg": "com.google.android.videos",
+   "label": "Google TV (app)",
+   "risk": "safe",
+   "why": "Optional media app."
+  },
+  {
+   "pkg": "com.google.android.printservice.recommendation",
+   "label": "Print service recommendations",
+   "risk": "safe",
+   "why": "Suggests print plugins."
+  },
+  {
+   "pkg": "com.google.android.apps.turbo",
+   "label": "Device Health Services",
+   "risk": "caution",
+   "why": "Adaptive battery / charging features depend on it."
+  }
+ ]
+}

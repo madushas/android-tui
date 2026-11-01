@@ -1,0 +1,4 @@
+#!/bin/sh
+last=""; for a; do last="$a"; done
+d=$(echo "$last" | sed "s#^/sdcard#$FAKE/sdcard#")
+/bin/ls -lA --time-style=long-iso "$d"

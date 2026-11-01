@@ -1,0 +1,31 @@
+{
+ "pack": "zte",
+ "title": "ZTE / Nubia",
+ "requires": {
+  "brand": [
+   "zte",
+   "nubia"
+  ]
+ },
+ "tweaks": [],
+ "debloat": [
+  {
+   "pkg": "com.zte.zdm",
+   "label": "ZTE Device Manager",
+   "risk": "caution",
+   "why": "OTA/device management client; disable only if you update another way."
+  },
+  {
+   "pkg": "com.zte.aiengine",
+   "label": "ZTE AI Engine",
+   "risk": "safe",
+   "why": "Background AI/analytics engine."
+  },
+  {
+   "pkg": "com.zte.heartyservice",
+   "label": "HeartyService",
+   "risk": "caution",
+   "why": "ZTE power/cleaner service."
+  }
+ ]
+}

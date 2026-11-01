@@ -1,0 +1,7 @@
+#!/bin/sh
+. "$(dirname "$0")/_kv"
+case "$1 $2" in
+ "size ") echo "Physical size: 1080x2400";; "density ") echo "Physical density: 420";;
+ "size reset"|"density reset") kv_del "$FAKE/wm.tsv" "$1";;
+ *) if [ -n "$2" ]; then kv_put "$FAKE/wm.tsv" "$1" "$2"; else v=$(kv_get "$FAKE/wm.tsv" "$1"); case "$1" in size) echo "Physical size: 1080x2400";; *) echo "Physical density: 420";; esac; [ -n "$v" ] && echo "Override $1: $v"; fi;;
+esac

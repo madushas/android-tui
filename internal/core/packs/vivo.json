@@ -1,0 +1,42 @@
+{
+ "pack": "vivo",
+ "title": "vivo / iQOO (Funtouch / OriginOS)",
+ "requires": {
+  "brand": [
+   "vivo"
+  ]
+ },
+ "tweaks": [],
+ "debloat": [
+  {
+   "pkg": "com.vivo.browser",
+   "label": "vivo Browser",
+   "risk": "safe",
+   "why": "Stock browser; keep if it is your only one."
+  },
+  {
+   "pkg": "com.vivo.appstore",
+   "label": "V-Appstore",
+   "risk": "caution",
+   "why": "Vendor store; also updates some vendor apps."
+  },
+  {
+   "pkg": "com.vivo.game",
+   "label": "vivo Game Center",
+   "risk": "safe",
+   "why": "Game hub / promotions."
+  },
+  {
+   "pkg": "com.vivo.easyshare",
+   "label": "EasyShare",
+   "risk": "safe",
+   "why": "File transfer app."
+  },
+  {
+   "pkg": "com.vivo.weather.provider",
+   "label": "vivo Weather provider",
+   "risk": "caution",
+   "why": "Used by the lockscreen/home weather widget."
+  }
+ ]
+}

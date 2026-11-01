@@ -1,0 +1,131 @@
+{
+ "pack": "unisoc",
+ "title": "Unisoc / Spreadtrum",
+ "requires": {
+  "soc": [
+   "unisoc"
+  ]
+ },
+ "tweaks": [
+  {
+   "id": "unisoc.fps",
+   "title": "Display refresh-rate override",
+   "category": "Unisoc",
+   "desc": "Vendor display controller key. Shown only if present on this device; values are device-specific (the current value is displayed first).",
+   "risk": "caution",
+   "ops": [
+    {
+     "kind": "auto",
+     "key": "unisoc.display_refreshrate",
+     "fallback_ns": "global",
+     "on": "{v}",
+     "off_unset": true
+    }
+   ],
+   "special": "value",
+   "requires": {
+    "keys_any": [
+     "unisoc.display_refreshrate"
+    ]
+   }
+  },
+  {
+   "id": "unisoc.fps2",
+   "title": "Refresh-rate controller result FPS",
+   "category": "Unisoc",
+   "desc": "ScreenRefreshRateController_resultFps — only if present.",
+   "risk": "caution",
+   "ops": [
+    {
+     "kind": "auto",
+     "key": "ScreenRefreshRateController_resultFps",
+     "fallback_ns": "global",
+     "on": "{v}",
+     "off_unset": true
+    }
+   ],
+   "special": "value",
+   "requires": {
+    "keys_any": [
+     "ScreenRefreshRateController_resultFps"
+    ]
+   }
+  },
+  {
+   "id": "unisoc.fling.friction",
+   "title": "Fling friction slope",
+   "category": "Unisoc",
+   "desc": "unisoc_fling_friction_slope — scroll/fling curve. Only if present.",
+   "risk": "caution",
+   "ops": [
+    {
+     "kind": "auto",
+     "key": "unisoc_fling_friction_slope",
+     "fallback_ns": "system",
+     "on": "{v}",
+     "off_unset": true
+    }
+   ],
+   "special": "value",
+   "requires": {
+    "keys_any": [
+     "unisoc_fling_friction_slope"
+    ]
+   }
+  },
+  {
+   "id": "unisoc.fling.anim",
+   "title": "Fling animation slope",
+   "category": "Unisoc",
+   "desc": "unisoc_fling_animation_slope — only if present.",
+   "risk": "caution",
+   "ops": [
+    {
+     "kind": "auto",
+     "key": "unisoc_fling_animation_slope",
+     "fallback_ns": "system",
+     "on": "{v}",
+     "off_unset": true
+    }
+   ],
+   "special": "value",
+   "requires": {
+    "keys_any": [
+     "unisoc_fling_animation_slope"
+    ]
+   }
+  },
+  {
+   "id": "unisoc.loggers",
+   "title": "Disable APR / ZTE / PNP loggers",
+   "category": "Unisoc",
+   "desc": "Finds persist.sys.apr.*, persist.sys.ztelog.*, persist.unipnp.report.* on this device and switches the ones that are enabled off (1→0, true→false). You see the exact list first.",
+   "risk": "caution",
+   "ops": [
+    {
+     "kind": "prop"
+    }
+   ],
+   "special": "prop_glob",
+   "cmd": "persist.sys.apr.*,persist.sys.ztelog.*,persist.unipnp.report.*"
+  },
+  {
+   "id": "unisoc.ylog",
+   "title": "Delete /cache/ylog",
+   "category": "Unisoc",
+   "desc": "Removes Unisoc YLog files. Usually needs root; one-shot (can't be undone).",
+   "risk": "caution",
+   "ops": [
+    {
+     "kind": "cleanup",
+     "key": "/cache/ylog"
+    }
+   ],
+   "action": true,
+   "requires": {
+    "root": true
+   }
+  }
+ ],
+ "debloat": []
+}

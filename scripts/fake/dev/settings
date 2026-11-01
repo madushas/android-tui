@@ -1,0 +1,8 @@
+#!/bin/sh
+. "$(dirname "$0")/_kv"; F="$FAKE/settings.tsv"
+case "$1" in
+ get) v=$(kv_get "$F" "$2/$3") && echo "$v" || echo null;;
+ put) kv_put "$F" "$2/$3" "$4";;
+ delete) kv_del "$F" "$2/$3";;
+ list) awk -F'\t' -v p="$2/" 'index($1,p)==1{print substr($1,length(p)+1)"="$2}' "$F" 2>/dev/null;;
+esac

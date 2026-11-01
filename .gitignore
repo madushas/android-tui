@@ -1,0 +1,13 @@
+/bin
+/local
+/dist/
+*.test
+
+# Local notes, AI-generated working artifacts, and device-specific diagnostics.
+/.local/
+/device-dump-*/
+/device-dump-*.tar.gz
+/bugreport-*/
+/reports/
+/artifacts/
+/screenshots/

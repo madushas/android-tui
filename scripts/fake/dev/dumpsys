@@ -1,0 +1,10 @@
+#!/bin/sh
+. "$(dirname "$0")/_kv"
+case "$1" in
+ battery) printf 'Current Battery Service state:\n  AC powered: true\n  USB powered: false\n  status: 2\n  level: 87\n  temperature: 250\n';;
+ -l) printf 'Currently running services:\n  activity\n  battery\n  window\n';;
+ deviceidle) case "$2" in whitelist) case "$3" in +*) kv_put "$FAKE/doze.tsv" "${3#+}" 10100;; -*) kv_del "$FAKE/doze.tsv" "${3#-}";; *) awk -F'\t' '{print "user,"$1","$2}' "$FAKE/doze.tsv" 2>/dev/null;; esac;; esac;;
+ meminfo) printf 'Applications Memory Usage (in Kilobytes):\nUptime: 123 Realtime: 456\n\nTotal PSS by process:\n    210,000K: com.example.notes (pid 2345 / activity)\n    180,500K: system_server (pid 1234)\n     60,000K: org.fake.browser (pid 3456 / service)\n\nTotal PSS by OOM adjustment:\n';;
+ package) printf '    versionCode=12 minSdk=26 targetSdk=35\n    versionName=1.4.2\n    firstInstallTime=2026-08-01 10:00:00\n    lastUpdateTime=2026-10-01 09:00:00\n    codePath=/data/app/x\n    requested permissions:\n      android.permission.INTERNET\n      android.permission.CAMERA\n    install permissions:\n      android.permission.INTERNET: granted=true\n    runtime permissions:\n      android.permission.CAMERA: granted=true, flags=[ USER_SET]\n      android.permission.READ_CONTACTS: granted=false, flags=[ ]\n';;
+ *) echo "dump of $1";;
+esac

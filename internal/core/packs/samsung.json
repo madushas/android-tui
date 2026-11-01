@@ -1,0 +1,54 @@
+{
+ "pack": "samsung",
+ "title": "Samsung (One UI)",
+ "requires": {
+  "brand": [
+   "samsung"
+  ]
+ },
+ "tweaks": [],
+ "debloat": [
+  {
+   "pkg": "com.samsung.android.bixby.agent",
+   "label": "Bixby",
+   "risk": "safe",
+   "why": "Voice assistant."
+  },
+  {
+   "pkg": "com.samsung.android.app.spage",
+   "label": "Samsung Free / Daily",
+   "risk": "safe",
+   "why": "Left-of-home feed."
+  },
+  {
+   "pkg": "com.samsung.android.game.gamehome",
+   "label": "Game Launcher",
+   "risk": "safe",
+   "why": "Game folder/launcher."
+  },
+  {
+   "pkg": "com.samsung.android.app.tips",
+   "label": "Tips",
+   "risk": "safe",
+   "why": "Tips app."
+  },
+  {
+   "pkg": "com.sec.android.diagmonagent",
+   "label": "Diagnostic monitoring agent",
+   "risk": "caution",
+   "why": "Samsung diagnostics/telemetry."
+  },
+  {
+   "pkg": "com.samsung.android.dqagent",
+   "label": "Device quality agent",
+   "risk": "caution",
+   "why": "Samsung quality telemetry."
+  },
+  {
+   "pkg": "com.samsung.android.knox.analytics.uploader",
+   "label": "Knox analytics uploader",
+   "risk": "caution",
+   "why": "Knox telemetry uploader."
+  }
+ ]
+}

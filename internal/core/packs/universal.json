@@ -1,0 +1,378 @@
+{
+ "pack": "universal",
+ "title": "Universal (any AOSP-based Android)",
+ "tweaks": [
+  {
+   "id": "phantom.limit",
+   "title": "Raise the phantom-process limit",
+   "category": "Processes",
+   "desc": "Android 12+ kills 'phantom' child processes beyond a small limit (default 32). Raising it keeps Termux, servers and torrent clients alive. Also turns the monitor off.",
+   "risk": "caution",
+   "ops": [
+    {
+     "kind": "device_config",
+     "ns": "activity_manager",
+     "key": "max_phantom_processes",
+     "on": "2147483647",
+     "off_unset": true
+    },
+    {
+     "kind": "setting",
+     "ns": "global",
+     "key": "settings_enable_monitor_phantom_procs",
+     "on": "false",
+     "off": "true"
+    }
+   ],
+   "requires": {
+    "min_sdk": 31
+   }
+  },
+  {
+   "id": "devconfig.persist",
+   "title": "Keep device_config overrides from being reset",
+   "category": "Processes",
+   "desc": "Google's flag sync can silently overwrite device_config values. This sets 'sync disabled' to persistent so your overrides stick (undo: none).",
+   "risk": "caution",
+   "ops": [
+    {
+     "kind": "shell",
+     "cmd": "device_config set_sync_disabled_for_tests persistent",
+     "undo": "device_config set_sync_disabled_for_tests none"
+    }
+   ],
+   "requires": {
+    "min_sdk": 31
+   }
+  },
+  {
+   "id": "freezer.cached",
+   "title": "Freeze cached background apps",
+   "category": "Processes",
+   "desc": "Freezes cached apps' processes (cgroup freezer) so they stop using CPU. Needs kernel support — verify with: dumpsys activity | grep -i freezer.",
+   "risk": "caution",
+   "ops": [
+    {
+     "kind": "setting",
+     "ns": "global",
+     "key": "cached_apps_freezer",
+     "on": "enabled",
+     "off": "device_default"
+    },
+    {
+     "kind": "device_config",
+     "ns": "activity_manager",
+     "key": "use_freezer",
+     "on": "true",
+     "off_unset": true
+    }
+   ],
+   "requires": {
+    "min_sdk": 30
+   }
+  },
+  {
+   "id": "anim.scale",
+   "title": "Animation speed",
+   "category": "Display & UI",
+   "desc": "Sets window, transition and animator duration scales together. 0 disables animations; 0.5 feels snappier.",
+   "risk": "safe",
+   "ops": [
+    {
+     "kind": "setting",
+     "ns": "global",
+     "key": "window_animation_scale",
+     "on": "{v}",
+     "off": "1.0"
+    },
+    {
+     "kind": "setting",
+     "ns": "global",
+     "key": "transition_animation_scale",
+     "on": "{v}",
+     "off": "1.0"
+    },
+    {
+     "kind": "setting",
+     "ns": "global",
+     "key": "animator_duration_scale",
+     "on": "{v}",
+     "off": "1.0"
+    }
+   ],
+   "presets": [
+    {
+     "Label": "Off (0x)",
+     "Value": "0"
+    },
+    {
+     "Label": "0.25x",
+     "Value": "0.25"
+    },
+    {
+     "Label": "0.5x",
+     "Value": "0.5"
+    },
+    {
+     "Label": "1.0x (default)",
+     "Value": "1.0"
+    }
+   ]
+  },
+  {
+   "id": "win.resizable",
+   "title": "Force all apps resizable",
+   "category": "Windowing",
+   "desc": "Lets non-resizable apps run in split-screen/freeform windows. Some apps misbehave.",
+   "risk": "caution",
+   "ops": [
+    {
+     "kind": "setting",
+     "ns": "global",
+     "key": "force_resizable_activities",
+     "on": "1",
+     "off": "0"
+    }
+   ],
+   "reboot": true,
+   "requires": {
+    "min_sdk": 28
+   }
+  },
+  {
+   "id": "win.freeform",
+   "title": "Enable freeform windows",
+   "category": "Windowing",
+   "desc": "Turns on freeform (desktop-style) window support.",
+   "risk": "caution",
+   "ops": [
+    {
+     "kind": "setting",
+     "ns": "global",
+     "key": "enable_freeform_support",
+     "on": "1",
+     "off": "0"
+    }
+   ],
+   "reboot": true,
+   "requires": {
+    "min_sdk": 28
+   }
+  },
+  {
+   "id": "win.desktop",
+   "title": "Desktop mode on external displays",
+   "category": "Windowing",
+   "desc": "Forces desktop mode when an external display is connected.",
+   "risk": "caution",
+   "ops": [
+    {
+     "kind": "setting",
+     "ns": "global",
+     "key": "force_desktop_mode_on_external_displays",
+     "on": "1",
+     "off": "0"
+    }
+   ],
+   "reboot": true,
+   "requires": {
+    "min_sdk": 29
+   }
+  },
+  {
+   "id": "gesture.inset",
+   "title": "Back-gesture edge sensitivity",
+   "category": "Navigation",
+   "desc": "Scales the width of the left/right back-gesture edge. Smaller = fewer accidental swipes.",
+   "risk": "safe",
+   "ops": [
+    {
+     "kind": "setting",
+     "ns": "secure",
+     "key": "back_gesture_inset_scale_left",
+     "on": "{v}",
+     "off_unset": true
+    },
+    {
+     "kind": "setting",
+     "ns": "secure",
+     "key": "back_gesture_inset_scale_right",
+     "on": "{v}",
+     "off_unset": true
+    }
+   ],
+   "presets": [
+    {
+     "Label": "0.5x",
+     "Value": "0.5"
+    },
+    {
+     "Label": "0.75x",
+     "Value": "0.75"
+    },
+    {
+     "Label": "1.0x (default)",
+     "Value": "1.0"
+    },
+    {
+     "Label": "1.5x",
+     "Value": "1.5"
+    },
+    {
+     "Label": "2.0x",
+     "Value": "2.0"
+    }
+   ],
+   "requires": {
+    "min_sdk": 29
+   }
+  },
+  {
+   "id": "notif.compact",
+   "title": "Compact heads-up notifications (experimental)",
+   "category": "Display & UI",
+   "desc": "Aconfig flag android.app.compact_heads_up_notification. Namespace and availability vary by build — the journal shows whether the value stuck.",
+   "risk": "risky",
+   "ops": [
+    {
+     "kind": "device_config",
+     "ns": "systemui",
+     "key": "android.app.compact_heads_up_notification",
+     "on": "true",
+     "off_unset": true
+    }
+   ],
+   "requires": {
+    "min_sdk": 36
+   }
+  },
+  {
+   "id": "compile.speed",
+   "title": "Compile all apps (speed)",
+   "category": "Maintenance",
+   "desc": "Full AOT compile of every app: faster launches, more storage and a long run. cmd package compile -m speed -f -a",
+   "risk": "caution",
+   "ops": [
+    {
+     "kind": "shell",
+     "cmd": "cmd package compile -m speed -f -a"
+    }
+   ],
+   "action": true
+  },
+  {
+   "id": "compile.profile",
+   "title": "Compile all apps (speed-profile)",
+   "category": "Maintenance",
+   "desc": "Profile-guided compile: the usual sweet spot for speed vs. size.",
+   "risk": "safe",
+   "ops": [
+    {
+     "kind": "shell",
+     "cmd": "cmd package compile -m speed-profile -f -a"
+    }
+   ],
+   "action": true
+  },
+  {
+   "id": "compile.reset",
+   "title": "Reset compilation of all apps",
+   "category": "Maintenance",
+   "desc": "Drops compiled code back to the default state (frees space).",
+   "risk": "safe",
+   "ops": [
+    {
+     "kind": "shell",
+     "cmd": "cmd package compile --reset -a"
+    }
+   ],
+   "action": true
+  },
+  {
+   "id": "dexopt.bg",
+   "title": "Run background dex-optimisation now",
+   "category": "Maintenance",
+   "desc": "Triggers the idle-time dexopt job immediately: cmd package bg-dexopt-job",
+   "risk": "safe",
+   "ops": [
+    {
+     "kind": "shell",
+     "cmd": "cmd package bg-dexopt-job"
+    }
+   ],
+   "action": true
+  },
+  {
+   "id": "storage.fstrim",
+   "title": "TRIM internal storage",
+   "category": "Maintenance",
+   "desc": "Runs sm fstrim. Keeps flash storage fast; may need root on newer Android.",
+   "risk": "safe",
+   "ops": [
+    {
+     "kind": "shell",
+     "cmd": "sm fstrim"
+    }
+   ],
+   "action": true
+  },
+  {
+   "id": "storage.trimcaches",
+   "title": "Trim all app caches",
+   "category": "Maintenance",
+   "desc": "Frees cache space: pm trim-caches 999G",
+   "risk": "safe",
+   "ops": [
+    {
+     "kind": "shell",
+     "cmd": "pm trim-caches 999G"
+    }
+   ],
+   "action": true
+  }
+ ],
+ "debloat": [
+  {
+   "pkg": "com.android.printspooler",
+   "label": "Print Spooler",
+   "risk": "safe",
+   "why": "Printing framework; unused if you never print."
+  },
+  {
+   "pkg": "com.android.bips",
+   "label": "Default Print Service",
+   "risk": "safe",
+   "why": "Built-in print service."
+  },
+  {
+   "pkg": "com.google.android.feedback",
+   "label": "Google Feedback",
+   "risk": "safe",
+   "why": "Crash/feedback reporter."
+  },
+  {
+   "pkg": "com.android.egg",
+   "label": "Android Easter Egg",
+   "risk": "safe",
+   "why": "Easter egg."
+  },
+  {
+   "pkg": "com.android.dreams.basic",
+   "label": "Basic Daydreams",
+   "risk": "safe",
+   "why": "Basic screensaver."
+  },
+  {
+   "pkg": "com.android.dreams.phototable",
+   "label": "Photo Table screensaver",
+   "risk": "safe",
+   "why": "Screensaver."
+  },
+  {
+   "pkg": "com.google.android.marvin.talkback",
+   "label": "Accessibility Suite (TalkBack)",
+   "risk": "caution",
+   "why": "Only disable if nobody uses screen readers, Select-to-Speak or Switch Access."
+  }
+ ]
+}

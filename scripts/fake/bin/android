@@ -1,0 +1,9 @@
+#!/bin/sh
+case "$1 $2" in
+ "--version "*|"--version") echo "android 1.0.16406183";;
+ "emulator create") if [ "$3" = "--list-profiles" ]; then printf 'Available profiles:\n- medium_phone\n- pixel_9\n'; else echo "created"; fi;;
+ "sdk list") printf 'emulator 35.1.2 -> 35.2.1\nplatform-tools 36.0.0\n';;
+ "emulator stop") adb -s "$3" emu kill;;
+ "layout "*) echo '{"fake":true}';;
+ *) echo "android $@";;
+esac

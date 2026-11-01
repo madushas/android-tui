@@ -1,0 +1,7 @@
+#!/bin/sh
+. "$(dirname "$0")/_kv"; F="$FAKE/bucket.tsv"
+case "$1" in
+ get-standby-bucket) b=$(kv_get "$F" "$2") || b=active; case "$b" in active) echo 10;; working_set) echo 20;; frequent) echo 30;; rare) echo 40;; restricted) echo 45;; *) echo 10;; esac;;
+ set-standby-bucket) kv_put "$F" "$2" "$3";;
+ *) echo "am $*";;
+esac

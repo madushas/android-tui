@@ -1,0 +1,3 @@
+#!/bin/sh
+. "$(dirname "$0")/_kv"; F="$FAKE/props.tsv"
+if [ -z "$1" ]; then awk -F'\t' '{print "["$1"]: ["$2"]"}' "$F" 2>/dev/null; else kv_get "$F" "$1" || echo; fi

@@ -1,0 +1,42 @@
+{
+ "pack": "xiaomi",
+ "title": "Xiaomi / Redmi / POCO",
+ "requires": {
+  "brand": [
+   "xiaomi"
+  ]
+ },
+ "tweaks": [],
+ "debloat": [
+  {
+   "pkg": "com.miui.analytics",
+   "label": "MIUI Analytics",
+   "risk": "safe",
+   "why": "Telemetry."
+  },
+  {
+   "pkg": "com.miui.msa.global",
+   "label": "MIUI System Ads",
+   "risk": "safe",
+   "why": "Ad services."
+  },
+  {
+   "pkg": "com.miui.bugreport",
+   "label": "MIUI Bug Report",
+   "risk": "safe",
+   "why": "Bug reporter."
+  },
+  {
+   "pkg": "com.xiaomi.joyose",
+   "label": "Joyose",
+   "risk": "caution",
+   "why": "Cloud-driven performance/thermal policy service; disabling changes throttling behaviour."
+  },
+  {
+   "pkg": "com.miui.daemon",
+   "label": "MIUI Daemon",
+   "risk": "caution",
+   "why": "Background profiling service."
+  }
+ ]
+}

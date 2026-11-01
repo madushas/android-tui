@@ -1,0 +1,28 @@
+#!/bin/sh
+. "$(dirname "$0")/_kv"; F="$FAKE/pkgs.tsv"
+case "$1" in
+ list)
+  case "$2" in
+   packages)
+    shift 2; mode=main; fmt=plain; extra=0; filter=""
+    for a in "$@"; do case "$a" in -d) mode=dis;; -u) mode=all;; -s) mode=sys;; -3) mode=user;; -f) fmt=path;; -i|-U|--show-versioncode) extra=1;; -*) ;; *) filter="$a";; esac; done
+    awk -F'\t' -v mode="$mode" -v fmt="$fmt" -v extra="$extra" -v filter="$filter" '
+      { p=$1; st=$2; sys=$3
+        if (filter!="" && index(p,filter)==0) next
+        if (mode=="main" && st=="removed") next
+        if (mode=="dis" && st!="disabled") next
+        if (mode=="sys" && (sys!="s" || st=="removed")) next
+        if (mode=="user" && (sys=="s" || st=="removed")) next
+        if (mode=="all" || mode=="main" || mode=="dis" || mode=="sys" || mode=="user") {
+          if (fmt=="path") { pre="package:" (sys=="s" ? "/system/app/" p "/base.apk=" : "/data/app/~~x==/" p "-1==/base.apk=") p } else pre="package:" p
+          if (extra) pre=pre "  installer=" (sys=="s" ? "null" : "com.android.vending") "  versionCode:12 uid:10123"
+          print pre } }' "$F";;
+   features) f=$(cat "$FAKE/form" 2>/dev/null || echo handheld); echo "feature:android.hardware.touchscreen"; case "$f" in tv) echo "feature:android.software.leanback";; *) echo "feature:android.hardware.telephony";; esac;;
+  esac;;
+ disable-user) kv_put_state=1; awk -F'\t' -v OFS='\t' -v p="$4" '$1==p{$2="disabled"}1' "$F" > "$F.n" && mv "$F.n" "$F"; echo "Package $4 new state: disabled-user";;
+ enable) awk -F'\t' -v OFS='\t' -v p="$2" '$1==p && $2=="disabled"{$2="installed"}1' "$F" > "$F.n" && mv "$F.n" "$F"; echo "Package $2 new state: enabled";;
+ uninstall) p=$(eval echo "\${$#}"); awk -F'\t' -v OFS='\t' -v p="$p" '$1==p{$2="removed"}1' "$F" > "$F.n" && mv "$F.n" "$F"; echo Success;;
+ install-existing) p=$(eval echo "\${$#}"); awk -F'\t' -v OFS='\t' -v p="$p" '$1==p{$2="installed"}1' "$F" > "$F.n" && mv "$F.n" "$F"; echo "Package $p installed for user: 0";;
+ path) echo "package:/data/app/~~x/$2-1/base.apk";;
+ *) echo Success;;
+esac

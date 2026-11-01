@@ -1,0 +1,14 @@
+#!/bin/sh
+. "$(dirname "$0")/_kv"
+case "$1 $2" in
+ "uimode night") if [ -n "$3" ]; then echo "$3" > "$FAKE/night"; else echo "Night mode: $(cat "$FAKE/night" 2>/dev/null || echo no)"; fi;;
+ "appops get") v=$(kv_get "$FAKE/appops.tsv" "$3/$4") && echo "$4: $v" || echo "No operations.";;
+ "appops set") kv_put "$FAKE/appops.tsv" "$3/$4" "$5";;
+ "package resolve-activity") echo "priority=0"; v=$(cat "$FAKE/home" 2>/dev/null); case "$*" in *HOME*) echo "${v:-com.android.launcher3/.Launcher}";; *) echo "$4/.MainActivity";; esac;;
+ "package query-activities") printf 'priority=0\ncom.android.launcher3/.Launcher\nxyz.projectivy.launcher/.MainActivity\ncom.google.android.tvlauncher/.MainActivity\n';;
+ "package set-home-activity") echo "$3" > "$FAKE/home"; echo "Success";;
+ "package compile"|"package bg-dexopt-job") echo "Success";;
+ "jobscheduler cancel") echo "Canceled all jobs for $4 in namespace";;
+ "statusbar "*|"connectivity "*) echo ok;;
+ *) echo "cmd $*";;
+esac

@@ -1,0 +1,42 @@
+{
+ "pack": "oppo",
+ "title": "OPPO / realme / OnePlus (ColorOS, HeyTap)",
+ "requires": {
+  "brand": [
+   "oppo"
+  ]
+ },
+ "tweaks": [],
+ "debloat": [
+  {
+   "pkg": "com.heytap.browser",
+   "label": "HeyTap Browser",
+   "risk": "safe",
+   "why": "Stock browser; keep if it is your only one."
+  },
+  {
+   "pkg": "com.heytap.market",
+   "label": "HeyTap App Market",
+   "risk": "caution",
+   "why": "Vendor store; also updates some vendor apps."
+  },
+  {
+   "pkg": "com.heytap.cloud",
+   "label": "HeyTap Cloud",
+   "risk": "safe",
+   "why": "Vendor cloud sync."
+  },
+  {
+   "pkg": "com.coloros.gamespaces",
+   "label": "Game Space",
+   "risk": "safe",
+   "why": "Game launcher/booster overlay."
+  },
+  {
+   "pkg": "com.coloros.weather.service",
+   "label": "Weather service",
+   "risk": "caution",
+   "why": "Used by the lockscreen/home weather widget."
+  }
+ ]
+}

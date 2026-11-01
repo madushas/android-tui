@@ -1,0 +1,176 @@
+{
+ "pack": "tv",
+ "title": "Android TV / Google TV",
+ "requires": {
+  "form": [
+   "tv"
+  ]
+ },
+ "tweaks": [
+  {
+   "id": "tv.framerate",
+   "title": "Match content frame rate",
+   "category": "Video",
+   "desc": "Switches the HDMI refresh rate to the video's frame rate. 0 never, 1 seamless only, 2 always.",
+   "risk": "safe",
+   "ops": [
+    {
+     "kind": "setting",
+     "ns": "secure",
+     "key": "match_content_frame_rate",
+     "on": "{v}",
+     "off": "0"
+    }
+   ],
+   "presets": [
+    {
+     "Label": "Never (0)",
+     "Value": "0"
+    },
+    {
+     "Label": "Seamless only (1)",
+     "Value": "1"
+    },
+    {
+     "Label": "Always (2)",
+     "Value": "2"
+    }
+   ],
+   "requires": {
+    "min_sdk": 30
+   }
+  },
+  {
+   "id": "tv.hdrconv",
+   "title": "HDR conversion mode",
+   "category": "Video",
+   "desc": "Display.HdrCapabilities conversion: passthrough (1), system (2) or forced (3).",
+   "risk": "safe",
+   "ops": [
+    {
+     "kind": "setting",
+     "ns": "auto",
+     "fallback_ns": "global",
+     "key": "hdr_conversion_mode",
+     "on": "{v}",
+     "off_unset": true
+    }
+   ],
+   "presets": [
+    {
+     "Label": "Passthrough (1)",
+     "Value": "1"
+    },
+    {
+     "Label": "System (2)",
+     "Value": "2"
+    },
+    {
+     "Label": "Force (3)",
+     "Value": "3"
+    }
+   ],
+   "requires": {
+    "min_sdk": 31
+   }
+  },
+  {
+   "id": "tv.dynrange",
+   "title": "Match content dynamic range",
+   "category": "Video",
+   "desc": "Value meanings differ by vendor — read the current value first; use the journal to revert.",
+   "risk": "caution",
+   "ops": [
+    {
+     "kind": "setting",
+     "ns": "auto",
+     "fallback_ns": "secure",
+     "key": "match_content_dynamic_range",
+     "on": "{v}",
+     "off_unset": true
+    }
+   ],
+   "presets": [
+    {
+     "Label": "0",
+     "Value": "0"
+    },
+    {
+     "Label": "1",
+     "Value": "1"
+    },
+    {
+     "Label": "2",
+     "Value": "2"
+    }
+   ],
+   "requires": {
+    "min_sdk": 33
+   }
+  },
+  {
+   "id": "tv.clicks",
+   "title": "Silence navigation click sounds",
+   "category": "Audio & UI",
+   "desc": "Turns off the UI click sounds when moving around the TV launcher.",
+   "risk": "safe",
+   "ops": [
+    {
+     "kind": "setting",
+     "ns": "system",
+     "key": "sound_effects_enabled",
+     "on": "0",
+     "off": "1"
+    }
+   ]
+  },
+  {
+   "id": "tv.launcher",
+   "title": "Default launcher…",
+   "category": "Launcher",
+   "desc": "Pick which installed launcher handles Home (Projectivy, FLauncher, Luma …). cmd package set-home-activity",
+   "risk": "caution",
+   "ops": [
+    {
+     "kind": "home"
+    }
+   ],
+   "special": "home_picker",
+   "requires": {
+    "min_sdk": 29
+   }
+  }
+ ],
+ "debloat": [
+  {
+   "pkg": "com.google.android.backdrop",
+   "label": "Ambient screensaver (Backdrop)",
+   "risk": "safe",
+   "why": "Photo/art screensaver."
+  },
+  {
+   "pkg": "com.google.android.apps.tv.dreamx",
+   "label": "Google TV ambient mode (DreamX)",
+   "risk": "caution",
+   "why": "Ambient/dream mode on Google TV."
+  },
+  {
+   "pkg": "com.google.android.katniss",
+   "label": "Google Assistant / Quick Search Box",
+   "risk": "caution",
+   "why": "Voice search; remote mic button stops working."
+  },
+  {
+   "pkg": "com.google.android.tvrecommendations",
+   "label": "TV recommendations",
+   "risk": "risky",
+   "why": "Feeds the home screen rows; the stock launcher may break."
+  },
+  {
+   "pkg": "com.google.android.tvlauncher",
+   "label": "Android TV launcher",
+   "risk": "risky",
+   "why": "Only disable after installing and selecting another launcher."
+  }
+ ]
+}

@@ -1,0 +1,19 @@
+#compdef android-tui emu
+# zsh completion for emu — install to a directory on $fpath (make install does this).
+_android_tui() {
+  local -a cmds names
+  cmds=(ls start stop restart cold headless wipe snaps snap save new rm image raw set rename clone images import mkavd flags connect pair
+        install uninstall shot props pkgs push pull adb shell logcat update prune doctor config)
+  names=(${(f)"$(android-tui _names 2>/dev/null)"})
+  if (( CURRENT == 2 )); then
+    _describe -t commands 'emu command' cmds
+    _describe -t avds 'avd' names
+  else
+    case $words[2] in
+      import) _files ;;
+      mkavd|connect|pair|config|ls|images|doctor|new|prune) ;;
+      *) _describe -t avds 'avd' names ;;
+    esac
+  fi
+}
+_android_tui "$@"

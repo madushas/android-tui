@@ -1,0 +1,2 @@
+#!/bin/sh
+. "$(dirname "$0")/_kv"; kv_put "$FAKE/props.tsv" "$1" "$2"
