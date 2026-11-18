@@ -41,9 +41,9 @@ func (d *diffTab) Tick(m *Model) tea.Cmd {
 
 func (d *diffTab) buildRows(m *Model) []row {
 	rows := []row{
-		{text: "＋ Take snapshot now (settings + device_config)", sty: sAcc.Render("＋ Take snapshot now (settings + device_config)"), d: diffRow{act: 0}},
-		{text: "＋ Take snapshot including system properties", sty: sAcc.Render("＋ Take snapshot including system properties"), d: diffRow{act: 1}},
-		hdrRow(fmt.Sprintf("Saved snapshots (%d) — Enter compares with the device now · Space marks one as the 'before' for comparing two", len(d.snaps))),
+		{text: "＋ Take settings snapshot (settings + device_config)", sty: sAcc.Render("＋ Take settings snapshot (settings + device_config)"), d: diffRow{act: 0}},
+		{text: "＋ Take settings snapshot including system properties", sty: sAcc.Render("＋ Take settings snapshot including system properties"), d: diffRow{act: 1}},
+		hdrRow(fmt.Sprintf("Saved settings snapshots (%d) — Enter compares with the device now · Space marks one as the 'before' for comparing two", len(d.snaps))),
 	}
 	for _, s := range d.snaps {
 		mk := "  "
@@ -65,7 +65,7 @@ func (d *diffTab) View(m *Model, w, h int, focused bool) []string {
 		return o
 	}
 	d.head = func(m *Model) string {
-		return sDim.Render("Workflow: snapshot → change something in the OEM settings (or a tweak) → Enter on the snapshot to see exactly what changed. A baseline is also taken automatically before the first change android-tui makes.")
+		return sDim.Render("Workflow: settings snapshot → change something in the OEM settings (or a tweak) → Enter on the snapshot to see exactly what changed. A baseline is also taken automatically before the first change android-tui makes.")
 	}
 	return d.viewRows(m, w, h, focused)
 }
@@ -75,7 +75,7 @@ func showDiff(m *Model, a, b *core.SettingsSnap) {
 	var ls []line
 	ls = append(ls, line{fmt.Sprintf("%s (%s)  →  %s (%s): %d difference(s)", a.Label, a.TS.Format("15:04:05"), b.Label, b.TS.Format("15:04:05"), len(ds)), "bold"}, line{"", ""})
 	if len(ds) == 0 {
-		ls = append(ls, line{"No differences — nothing changed between the two snapshots.", "ok"})
+		ls = append(ls, line{"No differences — nothing changed between the two settings snapshots.", "ok"})
 	}
 	for _, x := range ds {
 		switch x.Op {
@@ -114,13 +114,13 @@ func (d *diffTab) Key(m *Model, k tea.KeyMsg) (bool, tea.Cmd) {
 		if dr.act >= 0 {
 			props := dr.act == 1
 			m.ask("Snapshot label", "manual", func(m *Model, label string) tea.Cmd {
-				return m.job("snapshot", false, func() cont {
+				return m.job("settings snapshot", false, func() cont {
 					sn, err := core.TakeSnapshot(p, orStr(label, "manual"), props)
 					return func(m *Model) tea.Cmd {
 						if err != nil {
 							m.report(false, err.Error())
 						} else {
-							m.report(true, fmt.Sprintf("snapshot saved (%d keys): %s", len(sn.Data), sn.File))
+							m.report(true, fmt.Sprintf("settings snapshot saved (%d keys): %s", len(sn.Data), sn.File))
 						}
 						d.loadT = time.Time{}
 						return nil
@@ -162,7 +162,7 @@ func (d *diffTab) Key(m *Model, k tea.KeyMsg) (bool, tea.Cmd) {
 	case "x":
 		if dr.snap != nil {
 			f := dr.snap.File
-			m.confirm("Delete this snapshot file?\n"+f, true, func(m *Model) tea.Cmd { _ = os.Remove(f); d.loadT = time.Time{}; return nil })
+			m.confirm("Delete this settings snapshot file?\n"+f, true, func(m *Model) tea.Cmd { _ = os.Remove(f); d.loadT = time.Time{}; return nil })
 		}
 	case "r":
 		d.loadT = time.Time{}

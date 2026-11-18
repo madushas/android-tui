@@ -3,7 +3,6 @@ package ui
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -110,7 +109,7 @@ func (j *journalTab) Key(m *Model, k tea.KeyMsg) (bool, tea.Cmd) {
 		core.MkdirP(core.Cfg.ShotDir)
 		f := filepath.Join(core.Cfg.ShotDir, "journal-"+time.Now().Format("20060102-150405")+".json")
 		b, _ := json.MarshalIndent(j.es, "", " ")
-		_ = os.WriteFile(f, b, 0o644)
+		_ = core.WritePrivate(f, b)
 		m.report(true, "exported journal to "+f)
 	case "enter":
 		r := j.cur()

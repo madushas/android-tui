@@ -2,7 +2,7 @@
 # zsh completion for emu — install to a directory on $fpath (make install does this).
 _android_tui() {
   local -a cmds names
-  cmds=(ls start stop restart cold headless wipe snaps snap save new rm image raw set rename clone images import mkavd flags connect pair
+  cmds=(ls start stop restart cold headless wipe snaps snap save new rm image raw set rename clone images import mkavd rootavd flags connect pair
         install uninstall shot props pkgs push pull adb shell logcat update prune doctor config)
   names=(${(f)"$(android-tui _names 2>/dev/null)"})
   if (( CURRENT == 2 )); then
@@ -11,6 +11,7 @@ _android_tui() {
   else
     case $words[2] in
       import) _files ;;
+      rootavd) _arguments '--script=[path of your rootAVD.sh]:script:_files' '--status[show the ramdisk status]' '--restore[restore the stock ramdisk]' ;;
       mkavd|connect|pair|config|ls|images|doctor|new|prune) ;;
       *) _describe -t avds 'avd' names ;;
     esac

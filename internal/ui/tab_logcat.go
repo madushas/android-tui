@@ -3,7 +3,6 @@ package ui
 import (
 	"bufio"
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -105,10 +104,12 @@ type logcatTab struct {
 	preset string // name of the active core.LogPresets entry ("" = none / manual filter)
 	top    int
 	page   int
+	pick   int       // line the user clicked (absolute index into vw), valid for pickFor
+	pickAt time.Time // when it was clicked
 }
 
 func newLogcat() Tab {
-	return &logcatTab{baseTab: baseTab{ident: "logcat", name: "Logcat"}, follow: true}
+	return &logcatTab{baseTab: baseTab{ident: "logcat", name: "Logcat"}, follow: true, pick: -1}
 }
 
 func (l *logcatTab) stop() { l.st.stop() }
@@ -254,7 +255,11 @@ func (l *logcatTab) View(m *Model, w, h int, focused bool) []string {
 		if e.Lvl >= 3 {
 			msgSt = st
 		}
-		out = append(out, " "+sDim.Render(padR(clipS(e.TS, 12), 12))+" "+st.Bold(true).Render(string(lvls[e.Lvl]))+" "+tag.Render(padL(clipS(e.Tag, tw), tw))+" "+highlight(clipS(e.Msg, w-tw-19), l.rx, msgSt, hit))
+		line := " " + sDim.Render(padR(clipS(e.TS, 12), 12)) + " " + st.Bold(true).Render(string(lvls[e.Lvl])) + " " + tag.Render(padL(clipS(e.Tag, tw), tw)) + " " + highlight(clipS(e.Msg, w-tw-19), l.rx, msgSt, hit)
+		if k == l.pick && l.pickFresh() {
+			line = sSel.Render(fit(" "+padR(clipS(e.TS, 12), 12)+" "+string(lvls[e.Lvl])+" "+padL(clipS(e.Tag, tw), tw)+" "+clipS(e.Msg, w-tw-19), w))
+		}
+		out = append(out, line)
 	}
 	return out
 }
@@ -361,12 +366,12 @@ func (l *logcatTab) Key(m *Model, k tea.KeyMsg) (bool, tea.Cmd) {
 		m.ask("Only this app's process (package name, empty = all)", l.pkg, func(m *Model, v string) tea.Cmd { return l.setApp(m, strings.TrimSpace(v)) })
 	case "s":
 		core.MkdirP(core.Cfg.ShotDir)
-		f := filepath.Join(core.Cfg.ShotDir, fmt.Sprintf("logcat-%s-%s.txt", m.tgt().name(), time.Now().Format("20060102-150405")))
+		f := filepath.Join(core.Cfg.ShotDir, fmt.Sprintf("logcat-%s-%s.txt", core.SafeName(m.tgt().name()), time.Now().Format("20060102-150405")))
 		var sb strings.Builder
 		for _, e := range l.vw {
 			sb.WriteString(e.Raw + "\n")
 		}
-		_ = os.WriteFile(f, []byte(sb.String()), 0o644)
+		_ = core.WritePrivate(f, []byte(sb.String()))
 		m.report(true, fmt.Sprintf("saved %d lines to %s", len(l.vw), f))
 	case "enter":
 		if n > 0 {
@@ -374,10 +379,47 @@ func (l *logcatTab) Key(m *Model, k tea.KeyMsg) (bool, tea.Cmd) {
 			if l.follow {
 				i = min(n-1, l.top+page-1)
 			}
+			if l.pick >= 0 && l.pick < n && l.pickFresh() {
+				i = l.pick // a click or double-click chose the line
+			}
 			m.viewText("Logcat line", wrap(l.vw[i].Raw, 110))
 		}
 	default:
 		return false, nil
 	}
 	return true, nil
+}
+
+// pickFresh: a clicked line stays "picked" (and highlighted) for a few seconds, so Enter / double-click opens it.
+func (l *logcatTab) pickFresh() bool { return time.Since(l.pickAt) < 3*time.Second }
+
+// Click picks the line under the pointer (row 0 is the status line).
+func (l *logcatTab) Click(m *Model, row int) {
+	if k := l.top + row - 1; row >= 1 && k >= 0 && k < len(l.vw) {
+		l.pick, l.pickAt = k, time.Now()
+	}
+}
+
+func (l *logcatTab) hitRow(y int) bool { return y >= 1 && l.top+y-1 < len(l.vw) }
+func (l *logcatTab) anchorRow() int    { return -1 }
+
+func (l *logcatTab) Context(m *Model, onRow bool) []menuItem {
+	item := func(label, k string, sep bool) menuItem {
+		msg, _ := keyMsgFor(k)
+		return menuItem{label: label, key: k, run: mainKey(msg), sep: sep}
+	}
+	var out []menuItem
+	if onRow {
+		out = append(out, item("Show full line", "⏎", false))
+	}
+	pause := "Pause"
+	if l.paused {
+		pause = "Resume"
+	}
+	return append(out,
+		item("Filter…", "/", onRow), item("Filter presets…", "P", false), item("Only one app…", "a", false),
+		item("Level: verbose", "v", true), item("Level: debug", "d", false), item("Level: info", "i", false),
+		item("Level: warning", "w", false), item("Level: error", "e", false),
+		item(pause, "p", true), item("Follow newest", "G", false), item("Clear", "c", false),
+		item("Restart stream", "r", false), item("Save to file", "s", false))
 }

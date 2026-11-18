@@ -12,11 +12,12 @@ import (
 
 const helpText = `android-tui %s — Android device & emulator suite
 
- LAYOUT      [1] Emulators (AVDs)   [2] adb connections (USB / Wi-Fi / remote)   [3] Snapshots   Host   Command log
+ LAYOUT      [1] Emulators (AVDs)   [2] adb connections (USB / Wi-Fi / remote)   [3] AVD snapshots   Host   Command log
              The main panel follows what you selected: pick an emulator and you get AVD + Images tabs,
              pick an adb connection and you get the Connect tab. Both share Overview/Apps/Files/…/System.
- PANELS      Tab / Shift-Tab cycle · 1 emulators · 2 connections · 3 snapshots · →/l into the main panel · Z zoom main panel · Esc back
-             { } switch mode · [ ] switch tab inside the mode · L cycle command log (normal/large/hidden) · F5 refresh · mouse: click modes/tabs, scroll
+ PANELS      Tab / Shift-Tab cycle · 1 emulators · 2 connections · 3 AVD snapshots · →/l into the main panel · Z zoom main panel · Esc back
+             { } switch mode · [ ] switch tab inside the mode · L cycle command log (normal/large/hidden) · F5 refresh
+ MOUSE       click select · double-click = Enter · right-click, . or Ctrl-O = context menu on any list or tab · wheel scrolls · click modes/tabs
  MODES       Device [Overview Apps Files Screen Shell] · Optimize [Tweaks Debloat Procs Control Journal] · Inspect [Logcat Props System Diff Tools]
              plus Emulator [AVD Images] for an emulator, or Connect for adb connections. { } remembers the last tab used in each mode.
  EVERYWHERE  : or Ctrl-P action palette (type to filter) · ? help · q quit
@@ -37,6 +38,7 @@ const helpText = `android-tui %s — Android device & emulator suite
  PROPS       / filter · y copy value · c copy key=value · e setprop · s save all
  LOGCAT      v d i w e min level · / regex filter · p pause · c clear · a one app · s save · G follow · Enter full line
  SHELL       runs adb shell <cmd> · ↑/↓ history · Ctrl-T real shell · Ctrl-L clear · Ctrl-N/B change tab (in this mode) · Esc back
+ ROOT AVD     power users: palette › "Root AVD with rootAVD…" (needs your own copy of the third-party rootAVD script: set ROOTAVD in the config)
  OPTIMIZE    TWEAKS Enter apply/preview · Space mark · A apply marked · DEBLOAT d disable (snapshot first) · e restore · JOURNAL Enter revert · R revert all
              every change is journalled with the value it replaced, and an 'auto' settings snapshot is taken before the first change
  CONTROL     dark mode, Wi-Fi, airplane, proxy, density/size, animations, battery, GPS, SMS, calls, developer options
@@ -105,6 +107,9 @@ func move(s string, sel *int, n, page int) bool {
 
 func (m *Model) handleKey(k tea.KeyMsg) tea.Cmd {
 	s := k.String()
+	if s == "ctrl+o" { // context menu that also works inside text-input tabs, where "." is just a character
+		return m.openContextAtSelection()
+	}
 	typing := m.focus == fMain && m.tab().Typing()
 	switch {
 	case s == "ctrl+c":
@@ -132,6 +137,8 @@ func (m *Model) handleKey(k tea.KeyMsg) tea.Cmd {
 		case "?":
 			m.showHelp()
 			return nil
+		case ".", "shift+f10":
+			return m.openContextAtSelection()
 		case "Z":
 			m.zoom = !m.zoom
 			if m.zoom {
@@ -380,55 +387,83 @@ func (m *Model) keySnap(s string) tea.Cmd {
 }
 
 func (m *Model) handleMouse(msg tea.MouseMsg) tea.Cmd {
-	x, y := msg.X, msg.Y
-	wheel := 0
-	switch {
-	case msg.Button == tea.MouseButtonWheelUp:
-		wheel = -3
-	case msg.Button == tea.MouseButtonWheelDown:
-		wheel = 3
-	case msg.Button == tea.MouseButtonLeft && msg.Action == tea.MouseActionPress:
-	default:
+	ev, ok := m.normMouse(msg)
+	if !ok {
 		return nil
 	}
 	R := m.rects
+	var cmd tea.Cmd
 	switch {
-	case R["emu"].in(x, y):
-		m.setFocus(fEmu)
-		if wheel != 0 {
-			m.emuSel = max(0, min(len(m.sc.Emus)-1, m.emuSel+wheel))
-		} else if i := m.emuTop + y - R["emu"].y - 1; i >= 0 && i < len(m.sc.Emus) {
-			m.emuSel = i
-		}
-	case R["conn"].in(x, y):
-		m.setFocus(fConn)
-		if wheel != 0 {
-			m.connSel = max(0, min(len(m.sc.Conns)-1, m.connSel+wheel))
-		} else if i := m.connTop + y - R["conn"].y - 1; i >= 0 && i < len(m.sc.Conns) {
-			m.connSel = i
-		}
-	case R["snap"].in(x, y):
-		m.setFocus(fSnap)
-		if wheel != 0 {
-			m.snapSel = max(0, min(len(m.snaps)-1, m.snapSel+wheel))
-		} else if i := m.snapTop + y - R["snap"].y - 1; i >= 0 && i < len(m.snaps) {
-			m.snapSel = i
-		}
-	case R["main"].in(x, y):
-		if wheel != 0 {
-			m.tab().Scroll(wheel)
-		} else {
-			m.focus = fMain
-			switch y - R["main"].y {
-			case 0:
-				m.clickMode(x) // title row: modes
-			case 1:
-				m.clickTab(x) // first body row: tabs of the current mode
-			default:
-				m.tab().Click(m, y-R["main"].y-2)
-			}
-		}
+	case R["emu"].in(ev.x, ev.y):
+		cmd = m.mouseList(ev, fEmu, R["emu"], &m.emuSel, m.emuTop, len(m.sc.Emus))
+	case R["conn"].in(ev.x, ev.y):
+		cmd = m.mouseList(ev, fConn, R["conn"], &m.connSel, m.connTop, len(m.sc.Conns))
+	case R["snap"].in(ev.x, ev.y):
+		cmd = m.mouseList(ev, fSnap, R["snap"], &m.snapSel, m.snapTop, len(m.snaps))
+	case R["main"].in(ev.x, ev.y):
+		cmd = m.mouseMain(ev, R["main"])
 	}
 	m.checkSelect()
+	return cmd
+}
+
+// mouseList handles a gesture on one of the left-hand lists: wheel scrolls, click selects, double-click activates
+// (same as Enter), right-click selects and opens the context menu.
+func (m *Model) mouseList(ev mouseEv, f focusT, r rect, sel *int, top, n int) tea.Cmd {
+	m.setFocus(f)
+	if ev.kind == mWheel {
+		*sel = max(0, min(n-1, *sel+ev.dy*wheelStep))
+		return nil
+	}
+	onRow := false
+	if i := top + ev.y - r.y - 1; i >= 0 && i < n {
+		*sel, onRow = i, true
+	}
+	m.checkSelect()
+	switch ev.kind {
+	case mDouble:
+		if onRow {
+			return m.handleKey(tea.KeyMsg{Type: tea.KeyEnter})
+		}
+	case mRight:
+		return m.openContext(ev.x, ev.y, onRow)
+	}
+	return nil
+}
+
+// mouseMain handles a gesture in the main panel: the title row switches mode, the first body row switches tab,
+// everything below belongs to the current tab.
+func (m *Model) mouseMain(ev mouseEv, r rect) tea.Cmd {
+	if ev.kind == mWheel {
+		m.tab().Scroll(ev.dy * wheelStep)
+		return nil
+	}
+	m.focus = fMain
+	row := ev.y - r.y
+	if row <= 1 {
+		if ev.kind == mRight {
+			return m.openContext(ev.x, ev.y, false)
+		}
+		if row == 0 {
+			m.clickMode(ev.x)
+		} else {
+			m.clickTab(ev.x)
+		}
+		return nil
+	}
+	tab, y := m.tab(), row-2
+	tab.Click(m, y)
+	onRow := true
+	if h, ok := tab.(rowHitter); ok {
+		onRow = h.hitRow(y)
+	}
+	switch ev.kind {
+	case mDouble:
+		if onRow && !tab.Typing() {
+			return m.handleKey(tea.KeyMsg{Type: tea.KeyEnter})
+		}
+	case mRight:
+		return m.openContext(ev.x, ev.y, onRow)
+	}
 	return nil
 }

@@ -168,8 +168,8 @@ func ParseProfile(serial, out string) *Profile {
 	p.ShizukuInstalled = strings.Contains(kv["shizuku_pkg"], "moe.shizuku.privileged.api")
 	p.ShizukuRunning = kv["shizuku_run"] != "" && kv["shizuku_run"] != "0"
 	p.Classify(kv["ro.miui.ui.version.name"] != "")
-	// Nothing OS: the system image can report brand "qti"/vendor strings, so detect by its own prop
-	// (seen in the 4.1 / Android 16 OTA: ro.build.nothing.version="Nothing OS (4)"). Also covers CMF devices.
+	// Nothing OS sets its own build prop (ro.build.nothing.version), while the product brand/manufacturer strings
+	// can name the chipset vendor instead, so detect it by that prop. This also covers CMF devices.
 	if kv["ro.build.nothing.version"] != "" && !p.HasBrand("nothing") {
 		p.Brands = append(p.Brands, "nothing")
 	}

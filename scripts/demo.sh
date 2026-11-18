@@ -8,6 +8,7 @@ export FAKE=${FAKE:-/tmp/emu-demo}
 [ -f "$FAKE/props.tsv" ] && SEEDED=1
 mkdir -p "$FAKE/avd" "$FAKE/home/Downloads" "$FAKE/sdcard/Download" "$FAKE/sdcard/DCIM" "$FAKE/sdk/platform-tools" \
   "$FAKE/sdk/system-images/android-36/google_apis_playstore/x86_64" "$FAKE/sdk/system-images/android-35/google_apis/x86_64"
+[ -f "$FAKE/sdk/system-images/android-36/google_apis_playstore/x86_64/ramdisk.img" ] || printf 'stock-ramdisk' > "$FAKE/sdk/system-images/android-36/google_apis_playstore/x86_64/ramdisk.img"
 for n in Pixel_9 Tablet_A; do
   mkdir -p "$FAKE/avd/$n.avd/snapshots/clean" "$FAKE/avd/$n.avd/snapshots/default_boot"
   echo x > "$FAKE/avd/$n.avd/snapshots/clean/snapshot.pb"; head -c 300000 /dev/zero > "$FAKE/avd/$n.avd/snapshots/default_boot/ram.bin"

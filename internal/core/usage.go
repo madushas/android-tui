@@ -46,10 +46,7 @@ func BumpUsage(key string) {
 			}
 		}
 	}
-	MkdirP(DataDir)
+	MkdirPrivate(DataDir)
 	b, _ := json.Marshal(m)
-	tmp := usagePath() + ".tmp"
-	if os.WriteFile(tmp, b, 0o644) == nil {
-		_ = os.Rename(tmp, usagePath())
-	}
+	_ = WritePrivate(usagePath(), b)
 }

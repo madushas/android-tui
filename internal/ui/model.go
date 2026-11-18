@@ -2,167 +2,14 @@ package ui
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
-	"sync"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/madushas/android-tui/internal/core"
 )
-
-type (
-	tickMsg time.Time
-	scanMsg struct {
-		sc     core.Scan
-		host   core.Host
-		gen    int
-		serial string
-		sample *core.Sample
-	}
-	jobDone struct {
-		quiet bool
-		k     cont
-	}
-	hint struct{ k, l string }
-)
-
-type focusT int
-
-const (
-	fEmu focusT = iota
-	fConn
-	fSnap
-	fMain
-)
-
-// modeT groups up to 5 related tabs so the tab strip stays small; m.order[g] is the flattened list.
-type modeT struct {
-	name string
-	ids  []string
-}
-
-type groupT int
-
-const (
-	gEmu groupT = iota
-	gConn
-)
-
-type snapEnt struct{ name, size string }
-
-type rect struct{ x, y, w, h int }
-
-func (r rect) in(x, y int) bool { return x >= r.x && x < r.x+r.w && y >= r.y && y < r.y+r.h }
-
-// target is whatever the user has selected: an emulator (AVD) or an adb connection.
-type target struct {
-	emu  *core.Emu
-	conn *core.Conn
-}
-
-func (t target) valid() bool { return t.emu != nil || t.conn != nil }
-func (t target) isEmu() bool { return t.emu != nil }
-func (t target) serial() string {
-	switch {
-	case t.emu != nil:
-		return t.emu.Serial
-	case t.conn != nil:
-		return t.conn.Serial
-	}
-	return ""
-}
-func (t target) online() bool {
-	return (t.emu != nil && t.emu.Online()) || (t.conn != nil && t.conn.Online())
-}
-func (t target) name() string {
-	switch {
-	case t.emu != nil:
-		return t.emu.Name
-	case t.conn != nil:
-		return t.conn.Name()
-	}
-	return ""
-}
-func (t target) state() string {
-	switch {
-	case t.emu != nil:
-		return t.emu.State
-	case t.conn != nil:
-		return t.conn.State
-	}
-	return ""
-}
-func (t target) console() bool { return t.online() && strings.HasPrefix(t.serial(), "emulator-") }
-func (t target) key() string {
-	switch {
-	case t.emu != nil:
-		return "e:" + t.emu.Name
-	case t.conn != nil:
-		return "c:" + t.conn.Serial
-	}
-	return ""
-}
-
-// Model is the root Bubble Tea model.
-type Model struct {
-	w, h    int
-	sc      core.Scan
-	host    core.Host
-	hostMu  sync.Mutex
-	scanned bool
-
-	emuSel, emuTop   int
-	connSel, connTop int
-	snapSel, snapTop int
-	focus            focusT
-	grp              groupT
-	tabIdx           [2]int // index into order[grp] (flat)
-	modes            [2][]modeT
-	lastTab          [2][]int // last tab used in each mode (flat index)
-	modeHits         [][3]int // x0, x1, mode index
-	tabs             map[string]Tab
-	order            [2][]string
-
-	modals  []modal
-	toast   string
-	toastK  string
-	until   time.Time
-	busy    int
-	frame   int
-	logMode int
-
-	stats       map[string]*core.DevStats
-	info        map[string]map[string]string
-	profiles    map[string]*core.Profile
-	profLoading map[string]bool
-	infoLoading map[string]bool
-	snaps       []snapEnt
-	snapsFor    string
-	snapsT      time.Time
-	selKey      string
-	selChanged  time.Time
-	upd         int
-	rec         *recording
-
-	pollGen    int
-	pollN      int
-	pollSerial string
-	rects      map[string]rect
-	tabHits    [][3]int // x0, x1, tab index
-	haveAdb    bool     // adb is on PATH (checked once at start)
-	zoom       bool     // main panel fills the screen (Z); any focus change to another pane leaves zoom
-	quitting   bool
-}
-
-type recording struct {
-	serial, remote, name string
-	proc                 *os.Process
-	t0                   time.Time
-}
 
 func New() *Model {
 	ApplyTheme(themeFromEnv(core.Cfg.Theme))
@@ -223,6 +70,15 @@ func (m *Model) updateCheck() tea.Cmd {
 }
 
 // pollCmd scans devices (and samples the selected device) after delay.
+// sampleHost takes one host reading on the poll goroutine. The sampler keeps its own state (the previous CPU totals) and
+// hands out a copy; m.host is the snapshot the UI goroutine displays and is never touched from here.
+func (m *Model) sampleHost() core.Host {
+	m.hostMu.Lock()
+	defer m.hostMu.Unlock()
+	m.sampler.Sample()
+	return m.sampler
+}
+
 func (m *Model) pollCmd(delay time.Duration) tea.Cmd {
 	gen, serial := m.pollGen, m.pollSerial
 	full := m.pollN%5 == 0
@@ -230,11 +86,7 @@ func (m *Model) pollCmd(delay time.Duration) tea.Cmd {
 	return func() tea.Msg {
 		time.Sleep(delay)
 		sc := core.Scn.Scan()
-		m.hostMu.Lock()
-		m.host.Sample()
-		h := m.host
-		m.hostMu.Unlock()
-		msg := scanMsg{sc: sc, host: h, gen: gen, serial: serial}
+		msg := scanMsg{sc: sc, host: m.sampleHost(), gen: gen, serial: serial}
 		if serial != "" {
 			on := false
 			for _, e := range sc.Emus {
@@ -277,94 +129,6 @@ func (m *Model) toastWith(msg, kind string) {
 func (m *Model) push(md modal) { m.modals = append(m.modals, md) }
 
 // ─────────────── target / selection ───────────────
-
-func (m *Model) tgt() target {
-	if m.grp == gEmu {
-		if m.emuSel >= 0 && m.emuSel < len(m.sc.Emus) {
-			return target{emu: &m.sc.Emus[m.emuSel]}
-		}
-		return target{}
-	}
-	if m.connSel >= 0 && m.connSel < len(m.sc.Conns) {
-		return target{conn: &m.sc.Conns[m.connSel]}
-	}
-	return target{}
-}
-
-func (m *Model) curTabs() []Tab {
-	var ts []Tab
-	for _, id := range m.order[m.grp] {
-		ts = append(ts, m.tabs[id])
-	}
-	return ts
-}
-
-// curIdx is the current flat tab index (clamped).
-func (m *Model) curIdx() int { return min(m.tabIdx[m.grp], len(m.order[m.grp])-1) }
-
-// modeRange returns the current mode's index and the [lo,hi) range of its tabs in m.order[m.grp].
-func (m *Model) modeRange() (mi, lo, hi int) {
-	idx, off := m.curIdx(), 0
-	for i, md := range m.modes[m.grp] {
-		if idx < off+len(md.ids) {
-			return i, off, off + len(md.ids)
-		}
-		off += len(md.ids)
-	}
-	return 0, 0, len(m.order[m.grp])
-}
-
-// selectMode jumps to mode ni, resuming the tab last used there.
-func (m *Model) selectMode(ni int) {
-	ms := m.modes[m.grp]
-	if ni < 0 || ni >= len(ms) {
-		return
-	}
-	mi, _, _ := m.modeRange()
-	m.lastTab[m.grp][mi] = m.curIdx()
-	start := 0
-	for i := 0; i < ni; i++ {
-		start += len(ms[i].ids)
-	}
-	to := start
-	if l := m.lastTab[m.grp][ni]; l >= start && l < start+len(ms[ni].ids) {
-		to = l
-	}
-	m.tabIdx[m.grp] = to
-	m.checkSelect()
-}
-
-func (m *Model) switchMode(d int) {
-	mi, _, _ := m.modeRange()
-	n := len(m.modes[m.grp])
-	m.selectMode((mi + d + n) % n)
-}
-
-func (m *Model) clickMode(x int) {
-	for _, h := range m.modeHits {
-		if x >= h[0] && x < h[1] {
-			m.selectMode(h[2])
-		}
-	}
-}
-
-func (m *Model) tab() Tab {
-	return m.tabs[m.order[m.grp][m.curIdx()]]
-}
-
-func (m *Model) gotoTab(id string) {
-	groups := []groupT{m.grp, gEmu, gConn} // prefer the group the user is in
-	for _, g := range groups {
-		for i, x := range m.order[g] {
-			if x == id {
-				m.grp, m.tabIdx[g] = g, i
-				m.focus = fMain
-				m.checkSelect()
-				return
-			}
-		}
-	}
-}
 
 func (m *Model) settled() bool { return time.Since(m.selChanged) > 250*time.Millisecond }
 
@@ -524,7 +288,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.MouseMsg:
 		if len(m.modals) > 0 {
-			cmds = append(cmds, m.modalMsg(msg))
+			cmds = append(cmds, m.modalMouse(msg))
 		} else {
 			cmds = append(cmds, m.handleMouse(msg))
 		}
@@ -534,12 +298,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	}
 	return m, tea.Batch(cmds...)
-}
-
-type execDone struct{ err error }
-type execThen struct {
-	then func(m *Model, err error) tea.Cmd
-	err  error
 }
 
 // tickModals gives streaming modals their per-frame update (autoclose, QR polling).
@@ -559,6 +317,30 @@ func (m *Model) tickModals() []tea.Cmd {
 func (m *Model) modalMsg(msg tea.Msg) tea.Cmd {
 	n := len(m.modals)
 	closed, then := m.modals[n-1].update(m, msg)
+	if closed {
+		m.modals = m.modals[:n-1]
+		if then != nil {
+			return then(m)
+		}
+	}
+	return nil
+}
+
+// modalMouse gives the top modal a normalised gesture when it understands them, the raw message otherwise
+// (the text viewer scrolls on raw wheel events).
+func (m *Model) modalMouse(msg tea.MouseMsg) tea.Cmd {
+	n := len(m.modals)
+	var closed bool
+	var then cont
+	if mm, ok := m.modals[n-1].(mouseModal); ok {
+		ev, ok := m.normMouse(msg)
+		if !ok {
+			return nil
+		}
+		closed, then = mm.mouse(m, ev, m.topBox)
+	} else {
+		closed, then = m.modals[n-1].update(m, msg)
+	}
 	if closed {
 		m.modals = m.modals[:n-1]
 		if then != nil {
@@ -643,13 +425,3 @@ func (m *Model) ext(pause bool, argv ...string) tea.Cmd {
 	}
 	return tea.ExecProcess(c, func(err error) tea.Msg { return execDone{err} })
 }
-
-func (m *Model) clickTab(x int) {
-	for _, h := range m.tabHits {
-		if x >= h[0] && x < h[1] {
-			m.tabIdx[m.grp] = h[2]
-		}
-	}
-}
-
-var _ = fmt.Sprint

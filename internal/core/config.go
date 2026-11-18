@@ -22,6 +22,7 @@ type Config struct {
 	AVDFlags    map[string]string
 	ShotDir     string
 	Theme       string // default | contrast | mono
+	RootAVD     string // optional path of a rootAVD.sh (power users; see rootavd.go)
 	PullDir     string
 	APKDir      string
 	LogLines    int
@@ -124,21 +125,22 @@ func MigrateLegacy() {
 	if err != nil {
 		return
 	}
-	MkdirP(ConfDir)
+	MkdirPrivate(ConfDir)
 	for _, e := range ents {
 		if !e.IsDir() {
 			_ = CopyFile(filepath.Join(old, e.Name()), filepath.Join(ConfDir, e.Name()))
 		}
 	}
 	if b, err := os.ReadFile(filepath.Join(filepath.Dir(CacheDir), "emu", "shell_history")); err == nil {
-		MkdirP(CacheDir)
-		_ = os.WriteFile(filepath.Join(CacheDir, "shell_history"), b, 0o644)
+		MkdirPrivate(CacheDir)
+		_ = WritePrivate(filepath.Join(CacheDir, "shell_history"), b)
 	}
 	Logf("info", "migrated settings from %s", old)
 }
 
 // LoadConfig parses ConfFile without executing it.
 func LoadConfig() {
+	hardenStateDirs() // tighten directories left by older versions before anything is written there
 	b, err := os.ReadFile(ConfFile)
 	if err != nil {
 		return
@@ -184,6 +186,8 @@ func LoadConfig() {
 			Cfg.StopTimeout = atoi()
 		case key == "THEME":
 			Cfg.Theme = scalar
+		case key == "ROOTAVD":
+			Cfg.RootAVD = scalar
 		case key == "SHOT_DIR":
 			Cfg.ShotDir = scalar
 		case key == "PULL_DIR":
@@ -230,6 +234,10 @@ const ConfigTemplate = `# android-tui configuration — bash syntax kept so olde
 # Colour theme: default (your terminal palette) · contrast (brighter colours, readable greys) · mono (no colour; bold/underline/reverse only).
 # NO_COLOR=1 in the environment also selects mono; ANDROID_TUI_THEME overrides this setting.
 #THEME=default
+
+# Power users: path of your own copy of the third-party rootAVD script (patches an AVD's ramdisk with Magisk).
+# android-tui does not bundle it. ANDROID_TUI_ROOTAVD overrides this; 'android-tui rootavd <avd> --script PATH' also works.
+#ROOTAVD="$HOME/tools/rootAVD/rootAVD.sh"
 
 # Where screenshots / pulled files / the APK picker look.
 #SHOT_DIR="$HOME/Pictures/android-tui"

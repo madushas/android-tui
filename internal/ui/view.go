@@ -94,9 +94,16 @@ func (m *Model) View() string {
 		lines = append(lines, "")
 	}
 	lines = append(lines[:m.h-1], m.bar())
-	for _, md := range m.modals {
+	m.topBox = rect{}
+	for i, md := range m.modals {
 		b := md.view(m.w, m.h)
 		x, y := centerXY(b, m.w, m.h)
+		if p, ok := md.(placedModal); ok {
+			x, y = p.place(b, m.w, m.h)
+		}
+		if i == len(m.modals)-1 && len(b) > 0 {
+			m.topBox = rect{x, y, sw(b[0]), len(b)}
+		}
 		lines = overlay(lines, b, x, y)
 	}
 	return strings.Join(lines, "\n")
@@ -226,7 +233,7 @@ func (m *Model) panelConns(r rect) []string {
 
 func (m *Model) panelSnaps(r rect) []string {
 	t := m.tgt()
-	title := "[3] Snapshots"
+	title := "[3] AVD snapshots"
 	var rows []lrow
 	if m.grp == gEmu && t.isEmu() {
 		title += " · " + t.emu.Name
@@ -337,7 +344,7 @@ func (m *Model) panelMain(r rect) []string {
 	} else if m.narrow() {
 		sb.WriteString(sDim.Render("  Esc: lists"))
 	} else if r.w > 90 {
-		sb.WriteString(sDim.Render("   { } mode · [ ] tab"))
+		sb.WriteString(sDim.Render("   { } mode · [ ] tab · . menu"))
 	}
 	// first body row: tabs of the current mode
 	var tb strings.Builder

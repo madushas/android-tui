@@ -284,10 +284,10 @@ func TestDiffAndTop(t *testing.T) {
 	_ = g
 }
 
-// Nothing OS is detected from its own build prop (values copied from a real Nothing OS 4.1 / Android 16 OTA getprop),
-// even when the product brand strings say something else (the OTA's system image reports "qti").
+// Nothing OS is detected from its own build prop, even when the product brand strings name another company.
+// (Synthetic values: only the prop name is the real one.)
 func TestNothingOSDetect(t *testing.T) {
-	out := "ro.product.brand=qti\nro.product.manufacturer=QUALCOMM\nro.build.version.sdk=36\nro.build.version.release=16\nro.build.nothing.version=Nothing OS (4)\n@@features\nfeature:com.nothing.feature\n"
+	out := "ro.product.brand=example\nro.product.manufacturer=EXAMPLE\nro.build.version.sdk=36\nro.build.version.release=16\nro.build.nothing.version=Nothing OS (4)\n@@features\nfeature:com.nothing.feature\n"
 	p := ParseProfile("N", out)
 	if !p.HasBrand("nothing") || p.SDK != 36 {
 		t.Fatalf("nothing os: %+v", p)

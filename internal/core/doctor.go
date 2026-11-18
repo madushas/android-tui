@@ -109,5 +109,23 @@ func Doctor() []DoctorLine {
 	if len(names) == 0 {
 		add("warn", "no AVDs yet — create one with n")
 	}
+	adbVersionCheck(add)
 	return L
+}
+
+// adbVersionCheck reports whether this adb can do QR pairing (it needs `adb mdns services`, platform-tools 30.0.0+).
+func adbVersionCheck(add func(k, f string, a ...any)) {
+	out := Run([]string{"adb", "version"}, Quiet).Out
+	if out == "" {
+		return
+	}
+	v, ok := parseAdbVersion(out)
+	switch {
+	case !ok:
+		add("warn", "adb version not recognised — QR pairing needs platform-tools 30.0.0 or newer")
+	case v < 30:
+		add("bad", "adb %d is too old for QR pairing (needs platform-tools 30.0.0 or newer)", v)
+	default:
+		add("ok", "adb %d supports QR pairing (mDNS)", v)
+	}
 }

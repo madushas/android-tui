@@ -93,8 +93,8 @@ func (s *screenTab) capture(m *Model) tea.Cmd {
 		var f string
 		if err == nil && len(b) > 100 {
 			core.MkdirP(core.Cfg.ShotDir)
-			f = filepath.Join(core.Cfg.ShotDir, fmt.Sprintf("%s-%s.png", name, time.Now().Format("20060102-150405")))
-			_ = os.WriteFile(f, b, 0o644)
+			f = filepath.Join(core.Cfg.ShotDir, fmt.Sprintf("%s-%s.png", core.SafeName(name), time.Now().Format("20060102-150405")))
+			_ = core.WritePrivate(f, b)
 		}
 		return func(m *Model) tea.Cmd {
 			if f == "" {
@@ -153,10 +153,10 @@ func (s *screenTab) dump(m *Model, then func(m *Model, n *core.UINode)) tea.Cmd 
 
 func (s *screenTab) save(m *Model, n *core.UINode) {
 	core.MkdirP(core.Cfg.ShotDir)
-	base := filepath.Join(core.Cfg.ShotDir, fmt.Sprintf("uidump-%s-%s", m.tgt().name(), time.Now().Format("20060102-150405")))
-	_ = os.WriteFile(base+".txt", []byte(strings.Join(n.RenderTree(true, true), "\n")+"\n"), 0o644)
-	_ = os.WriteFile(base+".md", []byte(n.RenderMarkdown(true)), 0o644)
-	_ = os.WriteFile(base+".json", []byte(n.RenderJSON(true)), 0o644)
+	base := filepath.Join(core.Cfg.ShotDir, fmt.Sprintf("uidump-%s-%s", core.SafeName(m.tgt().name()), time.Now().Format("20060102-150405")))
+	_ = core.WritePrivate(base+".txt", []byte(strings.Join(n.RenderTree(true, true), "\n")+"\n"))
+	_ = core.WritePrivate(base+".md", []byte(n.RenderMarkdown(true)))
+	_ = core.WritePrivate(base+".json", []byte(n.RenderJSON(true)))
 	m.report(true, "saved "+base+".{txt,md,json}")
 }
 

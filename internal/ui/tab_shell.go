@@ -99,12 +99,12 @@ func (s *shellTab) run(m *Model, cmd string) tea.Cmd {
 	s.ed.hist = append(s.ed.hist, cmd)
 	s.ed.hi = len(s.ed.hist)
 	s.ed.set("")
-	core.MkdirP(core.CacheDir)
+	core.MkdirPrivate(core.CacheDir)
 	h := s.ed.hist
 	if len(h) > 500 {
 		h = h[len(h)-500:]
 	}
-	_ = os.WriteFile(s.histF, []byte(strings.Join(h, "\n")+"\n"), 0o644)
+	_ = core.WritePrivate(s.histF, []byte(strings.Join(h, "\n")+"\n"))
 	s.out = append(s.out, line{"$ " + cmd, "accb"})
 	s.follow, s.running = true, true
 	return m.job("shell", false, func() cont {

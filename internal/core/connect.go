@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -42,9 +43,9 @@ func LoadConns() []SavedConn {
 }
 
 func SaveConns(c []SavedConn) {
-	MkdirP(ConfDir)
+	MkdirPrivate(ConfDir)
 	b, _ := json.MarshalIndent(c, "", "  ")
-	_ = os.WriteFile(connFile(), b, 0o644)
+	_ = WritePrivate(connFile(), b)
 }
 
 func AddSaved(name, addr string) {
@@ -255,11 +256,49 @@ func (q *QRPair) cancelled() bool { q.mu.Lock(); defer q.mu.Unlock(); return q.c
 func (q *QRPair) finish(ok bool) { q.mu.Lock(); q.fin, q.ok = true, ok; q.mu.Unlock() }
 
 // Run blocks until paired, cancelled or timed out; call in a goroutine.
+// pairDone reports whether the phone we just paired is connected. adb lists a wireless device by its ip:port (or, when
+// it was discovered over mDNS, by the connect-service name). Only the phone we paired counts: another wireless device
+// that happens to be connected must not turn a failed pairing into a success.
+func pairDone(devs []Device, ents []MDNS, pairedIP string) bool {
+	names := map[string]bool{}
+	for _, e := range ents {
+		if e.Kind == "connect" && strings.HasPrefix(e.Addr, pairedIP+":") {
+			names[e.Name] = true
+		}
+	}
+	for _, d := range devs {
+		if strings.HasPrefix(d.Serial, pairedIP+":") || names[d.Serial] {
+			return true
+		}
+	}
+	return false
+}
+
+const (
+	qrPhoneWait   = 240 * time.Second // time the user has to show the QR code and scan it
+	qrConnectWait = 60 * time.Second  // after pairing, the connect service appears within seconds
+	qrMDNSGiveUp  = 3                 // consecutive failed `adb mdns services` calls before we blame adb's version
+)
+
+// Run drives the QR flow: wait for the phone's pairing service (named by the QR code), pair with the QR password, then
+// connect to the connect service on the same address. Every step is a fresh read of adb's state, so nothing is assumed.
 func (q *QRPair) Run() {
-	t0 := time.Now()
-	pairedIP := ""
-	for !q.cancelled() && time.Since(t0) < 240*time.Second {
-		ents := ParseMDNS(Run([]string{"adb", "mdns", "services"}, Quiet).Out)
+	deadline := time.Now().Add(qrPhoneWait)
+	pairedIP, mdnsFails := "", 0
+	for !q.cancelled() && time.Now().Before(deadline) {
+		r := Run([]string{"adb", "mdns", "services"}, Quiet)
+		if !r.OK() {
+			mdnsFails++
+			if mdnsFails >= qrMDNSGiveUp {
+				q.say("this adb cannot list mDNS services — update platform-tools (30.0.0 or newer) and try again")
+				q.finish(false)
+				return
+			}
+			time.Sleep(1200 * time.Millisecond)
+			continue
+		}
+		mdnsFails = 0
+		ents := ParseMDNS(r.Out)
 		if pairedIP == "" {
 			for _, e := range ents {
 				if e.Kind == "pair" && e.Name == q.Name {
@@ -272,16 +311,15 @@ func (q *QRPair) Run() {
 					}
 					pairedIP = e.Addr[:strings.LastIndex(e.Addr, ":")]
 					q.say("paired ✓ — waiting for the connect service…")
-					t0 = time.Now().Add(-200 * time.Second)
+					deadline = time.Now().Add(qrConnectWait)
+					break
 				}
 			}
 		} else {
-			for _, d := range ParseDevicesL(Run([]string{"adb", "devices", "-l"}, Quiet).Out) {
-				if strings.HasPrefix(d.Serial, pairedIP) || strings.Contains(d.Serial, "_adb-tls-connect") {
-					q.say("connected ✓")
-					q.finish(true)
-					return
-				}
+			if pairDone(ParseDevicesL(Run([]string{"adb", "devices", "-l"}, Quiet).Out), ents, pairedIP) {
+				q.say("connected ✓")
+				q.finish(true)
+				return
 			}
 			for _, e := range ents {
 				if e.Kind == "connect" && strings.HasPrefix(e.Addr, pairedIP+":") {
@@ -298,6 +336,16 @@ func (q *QRPair) Run() {
 	}
 	if !q.cancelled() {
 		q.say("timed out — is 'Wireless debugging' on and 'Pair with QR code' open on the phone?")
+		q.finish(false)
 	}
-	q.finish(false)
+}
+
+// parseAdbVersion reads the major version from `adb version` output ("Version 34.0.5-…").
+func parseAdbVersion(out string) (int, bool) {
+	m := regexp.MustCompile(`(?m)^Version (\d+)\.`).FindStringSubmatch(out)
+	if m == nil {
+		return 0, false
+	}
+	n, err := strconv.Atoi(m[1])
+	return n, err == nil
 }

@@ -284,7 +284,7 @@ func (i *imagesTab) toggleSource(m *Model, s romSource) tea.Cmd {
 
 func (i *imagesTab) fetchRemote(m *Model, name, url string) {
 	m.confirm("Download "+name+"?\nIt is large (often 1–3 GB) and is checked against a published .sha256sum when one exists.", false, func(m *Model) tea.Cmd {
-		dest := filepath.Join(core.CacheDir, "dl", name)
+		dest := filepath.Join(core.CacheDir, "dl", core.SafeName(name)) // name comes from the server's listing
 		core.MkdirP(filepath.Dir(dest))
 		m.push(newWork("Download — "+name, true, func(emit core.Emit, cancelled func() bool) any {
 			emit("GET "+url, false)
@@ -409,9 +409,9 @@ func (i *imagesTab) addSource(m *Model) tea.Cmd {
 				_ = json.Unmarshal(b, &extra)
 			}
 			extra = append(extra, romSource{n, u})
-			core.MkdirP(core.ConfDir)
+			core.MkdirPrivate(core.ConfDir)
 			b, _ := json.MarshalIndent(extra, "", "  ")
-			_ = os.WriteFile(filepath.Join(core.ConfDir, "rom-sources.json"), b, 0o644)
+			_ = core.WritePrivate(filepath.Join(core.ConfDir, "rom-sources.json"), b)
 			m.report(true, "added source '"+n+"'")
 			return nil
 		})

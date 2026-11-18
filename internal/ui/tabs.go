@@ -188,6 +188,20 @@ func (r *rowsTab) Click(m *Model, y int) {
 	}
 }
 
+// hitRow reports whether y (a row inside the tab area) is on a selectable row.
+func (r *rowsTab) hitRow(y int) bool {
+	i := r.top + y - r.listTop
+	return y >= r.listTop && i >= 0 && i < len(r.rows) && !r.rows[i].hdr
+}
+
+// anchorRow is the tab-area row of the selection (for menus opened from the keyboard), or -1 when it is not visible.
+func (r *rowsTab) anchorRow() int {
+	if r.sel < r.top || r.sel >= len(r.rows) {
+		return -1
+	}
+	return r.sel - r.top + r.listTop
+}
+
 func (r *rowsTab) Scroll(d int) {
 	for i := 0; i < abs(d); i++ {
 		r.step(d / abs(d))

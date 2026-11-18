@@ -59,18 +59,35 @@ func rsECC(data []int, n int) []int {
 // Encode returns the module matrix (true = dark).
 func Encode(text string) ([][]bool, error) {
 	raw := []byte(text)
-	ver := 0
-	for v := 1; v <= 6; v++ {
-		if t := tbl[v]; len(raw) <= t[1]*t[2]-2 {
-			ver = v
-			break
-		}
-	}
-	if ver == 0 {
-		return nil, errors.New("payload too long for the built-in QR encoder")
+	ver, err := pickVersion(len(raw))
+	if err != nil {
+		return nil, err
 	}
 	ecn, nb, dpb := tbl[ver][0], tbl[ver][1], tbl[ver][2]
-	capw := nb * dpb
+	final := interleave(dataCodewords(raw, nb*dpb), nb, dpb, ecn)
+	q := newMatrix(ver)
+	q.timing()
+	q.finder(3, 3)
+	q.finder(q.size-4, 3)
+	q.finder(3, q.size-4)
+	q.alignment(ver)
+	q.writeFormat(0) // reserves the format areas; the real format bits are written per mask below
+	q.placeData(final)
+	return q.bestMask(), nil
+}
+
+// pickVersion returns the smallest supported version whose capacity (byte mode, level M) holds n bytes.
+func pickVersion(n int) (int, error) {
+	for v := 1; v <= 6; v++ {
+		if t := tbl[v]; n <= t[1]*t[2]-2 {
+			return v, nil
+		}
+	}
+	return 0, errors.New("payload too long for the built-in QR encoder")
+}
+
+// dataCodewords turns the payload into the padded data codewords: mode, length, bytes, terminator, then 0xEC/0x11 padding.
+func dataCodewords(raw []byte, capw int) []int {
 	var bits strings.Builder
 	w := func(v, n int) {
 		for i := n - 1; i >= 0; i-- {
@@ -100,6 +117,11 @@ func Encode(text string) ([][]bool, error) {
 	for k := 0; len(cw) < capw; k++ {
 		cw = append(cw, []int{0xEC, 0x11}[k%2])
 	}
+	return cw
+}
+
+// interleave splits the codewords into nb blocks, appends Reed-Solomon error correction to each and interleaves them.
+func interleave(cw []int, nb, dpb, ecn int) []int {
 	blocks := make([][]int, nb)
 	eccs := make([][]int, nb)
 	for i := range blocks {
@@ -117,27 +139,45 @@ func Encode(text string) ([][]bool, error) {
 			final = append(final, e[i])
 		}
 	}
+	return final
+}
+
+// matrix is the symbol under construction: mod holds the modules, fn marks function modules (finders, timing, format…)
+// that data placement and masking must leave alone.
+type matrix struct {
+	size    int
+	mod, fn [][]bool
+}
+
+func newMatrix(ver int) *matrix {
 	size := 17 + 4*ver
-	mod, fn := grid(size), grid(size)
-	setf := func(x, y int, v bool) { mod[y][x], fn[y][x] = v, true }
-	for i := 0; i < size; i++ {
-		setf(6, i, i%2 == 0)
-		setf(i, 6, i%2 == 0)
+	return &matrix{size: size, mod: grid(size), fn: grid(size)}
+}
+
+func (q *matrix) set(x, y int, v bool) { q.mod[y][x], q.fn[y][x] = v, true }
+
+func (q *matrix) timing() {
+	for i := 0; i < q.size; i++ {
+		q.set(6, i, i%2 == 0)
+		q.set(i, 6, i%2 == 0)
 	}
-	finder := func(cx, cy int) {
-		for dy := -4; dy <= 4; dy++ {
-			for dx := -4; dx <= 4; dx++ {
-				x, y := cx+dx, cy+dy
-				if x >= 0 && x < size && y >= 0 && y < size {
-					d := max(abs(dx), abs(dy))
-					setf(x, y, d != 2 && d != 4)
-				}
+}
+
+// finder draws one finder pattern with its separator, centred at (cx, cy).
+func (q *matrix) finder(cx, cy int) {
+	for dy := -4; dy <= 4; dy++ {
+		for dx := -4; dx <= 4; dx++ {
+			x, y := cx+dx, cy+dy
+			if x >= 0 && x < q.size && y >= 0 && y < q.size {
+				d := max(abs(dx), abs(dy))
+				q.set(x, y, d != 2 && d != 4)
 			}
 		}
 	}
-	finder(3, 3)
-	finder(size-4, 3)
-	finder(3, size-4)
+}
+
+// alignment draws the alignment patterns of the version (none for version 1).
+func (q *matrix) alignment(ver int) {
 	pos := align[ver]
 	for _, cy := range pos {
 		for _, cx := range pos {
@@ -147,36 +187,41 @@ func Encode(text string) ([][]bool, error) {
 			}
 			for dy := -2; dy <= 2; dy++ {
 				for dx := -2; dx <= 2; dx++ {
-					setf(cx+dx, cy+dy, max(abs(dx), abs(dy)) != 1)
+					q.set(cx+dx, cy+dy, max(abs(dx), abs(dy)) != 1)
 				}
 			}
 		}
 	}
-	format := func(mask int) {
-		rem := mask
-		for i := 0; i < 10; i++ {
-			rem = (rem << 1) ^ ((rem >> 9) * 0x537)
-		}
-		b := (mask<<10 | rem) ^ 0x5412
-		g := func(i int) bool { return (b>>i)&1 == 1 }
-		for i := 0; i < 6; i++ {
-			setf(8, i, g(i))
-		}
-		setf(8, 7, g(6))
-		setf(8, 8, g(7))
-		setf(7, 8, g(8))
-		for i := 9; i < 15; i++ {
-			setf(14-i, 8, g(i))
-		}
-		for i := 0; i < 8; i++ {
-			setf(size-1-i, 8, g(i))
-		}
-		for i := 8; i < 15; i++ {
-			setf(8, size-15+i, g(i))
-		}
-		setf(8, size-8, true)
+}
+
+// writeFormat writes the 15 format bits (level M + mask, BCH protected) into both copies, plus the fixed dark module.
+func (q *matrix) writeFormat(mask int) {
+	rem := mask
+	for i := 0; i < 10; i++ {
+		rem = (rem << 1) ^ ((rem >> 9) * 0x537)
 	}
-	format(0)
+	b := (mask<<10 | rem) ^ 0x5412
+	g := func(i int) bool { return (b>>i)&1 == 1 }
+	for i := 0; i < 6; i++ {
+		q.set(8, i, g(i))
+	}
+	q.set(8, 7, g(6))
+	q.set(8, 8, g(7))
+	q.set(7, 8, g(8))
+	for i := 9; i < 15; i++ {
+		q.set(14-i, 8, g(i))
+	}
+	for i := 0; i < 8; i++ {
+		q.set(q.size-1-i, 8, g(i))
+	}
+	for i := 8; i < 15; i++ {
+		q.set(8, q.size-15+i, g(i))
+	}
+	q.set(8, q.size-8, true)
+}
+
+// placeData zig-zags the codeword bits up and down the column pairs, skipping function modules.
+func (q *matrix) placeData(final []int) {
 	var data []bool
 	for _, c := range final {
 		for i := 7; i >= 0; i-- {
@@ -184,52 +229,55 @@ func Encode(text string) ([][]bool, error) {
 		}
 	}
 	k, up := 0, true
-	for x := size - 1; x > 0; x -= 2 {
+	for x := q.size - 1; x > 0; x -= 2 {
 		if x == 6 {
 			x--
 		}
-		for j := 0; j < size; j++ {
+		for j := 0; j < q.size; j++ {
 			y := j
 			if up {
-				y = size - 1 - j
+				y = q.size - 1 - j
 			}
 			for _, xx := range []int{x, x - 1} {
-				if !fn[y][xx] {
-					mod[y][xx] = k < len(data) && data[k]
+				if !q.fn[y][xx] {
+					q.mod[y][xx] = k < len(data) && data[k]
 					k++
 				}
 			}
 		}
 		up = !up
 	}
-	masks := []func(x, y int) bool{
-		func(x, y int) bool { return (x+y)%2 == 0 }, func(x, y int) bool { return y%2 == 0 },
-		func(x, y int) bool { return x%3 == 0 }, func(x, y int) bool { return (x+y)%3 == 0 },
-		func(x, y int) bool { return (x/3+y/2)%2 == 0 }, func(x, y int) bool { return x*y%2+x*y%3 == 0 },
-		func(x, y int) bool { return (x*y%2+x*y%3)%2 == 0 }, func(x, y int) bool { return ((x+y)%2+x*y%3)%2 == 0 },
-	}
+}
+
+// maskFuncs are the eight standard data masks.
+var maskFuncs = []func(x, y int) bool{
+	func(x, y int) bool { return (x+y)%2 == 0 }, func(x, y int) bool { return y%2 == 0 },
+	func(x, y int) bool { return x%3 == 0 }, func(x, y int) bool { return (x+y)%3 == 0 },
+	func(x, y int) bool { return (x/3+y/2)%2 == 0 }, func(x, y int) bool { return x*y%2+x*y%3 == 0 },
+	func(x, y int) bool { return (x*y%2+x*y%3)%2 == 0 }, func(x, y int) bool { return ((x+y)%2+x*y%3)%2 == 0 },
+}
+
+// bestMask applies each mask in turn, writes its format bits and keeps the candidate with the lowest penalty score.
+func (q *matrix) bestMask() [][]bool {
 	var best [][]bool
 	bestP := -1
 	for mk := 0; mk < 8; mk++ {
-		m := grid(size)
-		for y := 0; y < size; y++ {
-			copy(m[y], mod[y])
-			for x := 0; x < size; x++ {
-				if !fn[y][x] && masks[mk](x, y) {
+		m := grid(q.size)
+		for y := 0; y < q.size; y++ {
+			copy(m[y], q.mod[y])
+			for x := 0; x < q.size; x++ {
+				if !q.fn[y][x] && maskFuncs[mk](x, y) {
 					m[y][x] = !m[y][x]
 				}
 			}
 		}
-		saved := mod
-		mod = m
-		format(mk)
-		cand := mod
-		mod = saved
-		if p := penalty(cand); bestP < 0 || p < bestP {
-			best, bestP = cand, p
+		cand := &matrix{size: q.size, mod: m, fn: q.fn}
+		cand.writeFormat(mk)
+		if p := penalty(cand.mod); bestP < 0 || p < bestP {
+			best, bestP = cand.mod, p
 		}
 	}
-	return best, nil
+	return best
 }
 
 func grid(n int) [][]bool {

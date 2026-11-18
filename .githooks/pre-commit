@@ -1,0 +1,3 @@
+#!/bin/sh
+# Optional: `make hooks` enables it. Runs the mechanical checks before every commit.
+exec make -s privacy-check size-check fmt-check vet

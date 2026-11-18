@@ -36,7 +36,7 @@ func (m *Model) maybeIntro() {
 	if _, err := os.Stat(flag); err == nil {
 		return
 	}
-	core.MkdirP(core.DataDir)
-	_ = os.WriteFile(flag, []byte("1\n"), 0o644)
+	core.MkdirPrivate(core.DataDir)
+	_ = core.WritePrivate(flag, []byte("1\n"))
 	m.push(newViewer("Quick start", strings.Split(introText, "\n")))
 }

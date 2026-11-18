@@ -2,7 +2,6 @@ package ui
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -93,12 +92,12 @@ func (p *propsTab) Key(m *Model, k tea.KeyMsg) (bool, tea.Cmd) {
 	case "s":
 		dir := core.Cfg.ShotDir
 		core.MkdirP(dir)
-		f := filepath.Join(dir, fmt.Sprintf("props-%s-%s.txt", m.tgt().name(), time.Now().Format("20060102-150405")))
+		f := filepath.Join(dir, fmt.Sprintf("props-%s-%s.txt", core.SafeName(m.tgt().name()), time.Now().Format("20060102-150405")))
 		var sb strings.Builder
 		for _, x := range p.items {
 			sb.WriteString(x.K + "=" + x.V + "\n")
 		}
-		_ = os.WriteFile(f, []byte(sb.String()), 0o644)
+		_ = core.WritePrivate(f, []byte(sb.String()))
 		m.report(true, fmt.Sprintf("saved %d props to %s", len(p.items), f))
 	case "enter":
 		if kv != nil {

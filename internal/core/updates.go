@@ -32,12 +32,12 @@ func SDKUpdates() ([]SDKUpdate, bool) {
 }
 
 func SaveUpdates(u []SDKUpdate) {
-	MkdirP(CacheDir)
+	MkdirPrivate(CacheDir)
 	var sb strings.Builder
 	for _, x := range u {
 		fmt.Fprintf(&sb, "%s %s %s\n", x.Pkg, x.Old, x.New)
 	}
-	_ = os.WriteFile(updFile(), []byte(sb.String()), 0o644)
+	_ = WritePrivate(updFile(), []byte(sb.String()))
 }
 
 func CachedUpdateCount() int {

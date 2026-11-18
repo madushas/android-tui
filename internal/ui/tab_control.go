@@ -56,7 +56,9 @@ func sh1(f string, a ...any) []cmdSpec { return []cmdSpec{{shell: fmt.Sprintf(f,
 func emuC(a ...string) []cmdSpec       { return []cmdSpec{{emu: a}} }
 func onoff(a string) int               { return map[string]int{"on": 1}[a] }
 func putSet(ns, key string) func(string) []cmdSpec {
-	return func(a string) []cmdSpec { return sh1("settings put %s %s %d", ns, key, onoff(a)) }
+	return func(a string) []cmdSpec {
+		return sh1("settings put %s %s %d", core.Quote(ns), core.Quote(key), onoff(a))
+	}
 }
 
 var control = []ctlItem{
@@ -65,7 +67,7 @@ var control = []ctlItem{
 		return sh1("cmd uimode night %s", map[string]string{"on": "yes", "off": "no"}[a])
 	}},
 	{label: "Auto-rotate", kind: "toggle", get: "settings get system accelerometer_rotation", val: yn, set: putSet("system", "accelerometer_rotation")},
-	{label: "Font scale", kind: "choice", get: "settings get system font_scale", val: trim, set: func(a string) []cmdSpec { return sh1("settings put system font_scale %s", a) },
+	{label: "Font scale", kind: "choice", get: "settings get system font_scale", val: trim, set: func(a string) []cmdSpec { return sh1("settings put system font_scale %s", core.Quote(a)) },
 		choices: [][2]string{{"0.85", "0.85"}, {"1.0 (default)", "1.0"}, {"1.15", "1.15"}, {"1.3", "1.3"}, {"1.5", "1.5"}, {"2.0", "2.0"}}},
 	{label: "Screen size", kind: "input", get: "wm size", val: lastWord, prompt: "WxH (e.g. 1080x1920) or 'reset'",
 		set: func(a string) []cmdSpec {
@@ -85,7 +87,7 @@ var control = []ctlItem{
 		set: func(a string) []cmdSpec {
 			var c []cmdSpec
 			for _, k := range []string{"window_animation_scale", "transition_animation_scale", "animator_duration_scale"} {
-				c = append(c, cmdSpec{shell: fmt.Sprintf("settings put global %s %s", k, a)})
+				c = append(c, cmdSpec{shell: fmt.Sprintf("settings put global %s %s", k, core.Quote(a))})
 			}
 			return c
 		},
